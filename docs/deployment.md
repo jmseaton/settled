@@ -421,6 +421,17 @@ store to stop it, rather than clicking through each time. A warning that
 appears on a host that previously did *not* warn is worth stopping to read:
 either the certificate was regenerated, or something else is answering.
 
+**The certificate script fails, or `certs/` is owned by root** — `docker
+compose up` creates a missing bind-mount source itself, as root, so
+starting the stack before generating a certificate leaves a directory the
+script cannot write into. The repo ships a `certs/.gitkeep` so the
+directory normally arrives with the checkout, but an install that predates
+it needs:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" certs
+```
+
 **`https://` refuses the connection, `http://` works** — nginx found no
 certificate and fell back:
 

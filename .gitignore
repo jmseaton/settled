@@ -19,6 +19,9 @@ dist/
 
 # §1.3a — TLS material. The private key is the whole of the transport's
 # security and a certificate in git is a certificate to reissue.
-certs/
+# The directory itself is tracked (see certs/.gitkeep) so that Docker does
+# not create it as root; its contents never are.
+certs/*
+!certs/.gitkeep
 *.pem
 *.key

@@ -34,7 +34,25 @@ fi
 
 command -v openssl >/dev/null || { echo "openssl is not installed" >&2; exit 1; }
 
-mkdir -p "$CERT_DIR"
+mkdir -p "$CERT_DIR" 2>/dev/null || true
+if [ ! -d "$CERT_DIR" ]; then
+    echo "Could not create $CERT_DIR." >&2
+    exit 1
+fi
+
+# `docker compose up` creates a missing bind-mount source itself, as root.
+# So anyone who started the stack before generating a certificate finds
+# ./certs owned by root and this script unable to write into it — with a
+# failure that says nothing useful unless it is named here. The repo ships
+# a certs/.gitkeep so the directory normally arrives from the checkout and
+# this never comes up; it still can on an install that predates it.
+if [ ! -w "$CERT_DIR" ]; then
+    echo "$CERT_DIR exists but is not writable by $(id -un)." >&2
+    echo "If \`docker compose up\` created it, it belongs to root:" >&2
+    echo "    sudo chown -R \"\$(id -u):\$(id -g)\" $CERT_DIR" >&2
+    exit 1
+fi
+
 cert="$CERT_DIR/fullchain.pem"
 key="$CERT_DIR/privkey.pem"
 
@@ -62,6 +80,12 @@ echo "Generating a ${DAYS}-day self-signed certificate for: ${sans}"
 
 # P-256 rather than RSA-2048: same practical security, faster handshake,
 # and every browser released this decade supports it.
+#
+# stderr is deliberately NOT redirected. An earlier version sent it to
+# /dev/null, which cost a CI run: openssl could not write into a certs/
+# directory Docker had created as root, and all this printed was its own
+# "Generating..." line before exiting 1. The stray "-----" openssl writes
+# on success is a small price for the failure saying what it was.
 openssl req -x509 -nodes \
     -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout "$key" -out "$cert" \
@@ -70,7 +94,7 @@ openssl req -x509 -nodes \
     -addext "subjectAltName=${sans}" \
     -addext "basicConstraints=critical,CA:FALSE" \
     -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
-    -addext "extendedKeyUsage=serverAuth" 2>/dev/null
+    -addext "extendedKeyUsage=serverAuth"
 
 # The key is the whole of the transport's security. nginx reads it as root
 # before dropping privileges, so 600 is enough and 644 is not.
