@@ -1,3 +1,16 @@
+/** §1.3a — what `/api/auth/session` reports.
+ *
+ *  `enabled` is whether this deployment has a password configured at all,
+ *  which is a different question from whether this browser is past it. An
+ *  install with no password answers `{enabled: false, authenticated: true}`:
+ *  everything works, and the UI says out loud that the door is open.
+ */
+export interface AuthStatus {
+  enabled: boolean
+  authenticated: boolean
+  session_expires_at: number | null
+}
+
 export interface ClosedLotCheck {
   passed: boolean
   trades_checked: number
@@ -593,8 +606,34 @@ export interface ExpiryRow {
   warnings: string[]
 }
 
+/** §1.3a — a 401 means the session ended, not that this particular request
+ *  was malformed. Every page would otherwise render its own puzzled error
+ *  ("401: Authentication required.") next to a stale table. One handler,
+ *  registered by App, takes the whole UI back to the login screen instead. */
+let unauthorizedHandler: (() => void) | null = null
+
+export function onUnauthorized(handler: (() => void) | null) {
+  unauthorizedHandler = handler
+}
+
+/** Every call in this module goes through here, so there is exactly one
+ *  place a 401 can be missed rather than one per endpoint. */
+async function request(path: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(`/api${path}`, {
+    // The default already, but stated: the session cookie is the whole of
+    // the auth story and a silent change of default would log everyone out.
+    credentials: 'same-origin',
+    ...init,
+  })
+  // ...except from the auth endpoints themselves, where a 401 means "wrong
+  // password" and not "your session ended". Firing the handler there would
+  // re-render the login screen out from under the error it is trying to show.
+  if (res.status === 401 && !path.startsWith('/auth/')) unauthorizedHandler?.()
+  return res
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`/api${path}`)
+  const res = await request(path)
   if (!res.ok) {
     const body = await res.text()
     throw new Error(`${res.status}: ${body}`)
@@ -603,7 +642,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await request(path, {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -636,10 +675,17 @@ const query = (params: Record<string, string | undefined>): string => {
 }
 
 export const api = {
+  // §1.3a — auth. `session` is safe to call before login: it answers 200
+  // whether or not there is a session, because "not signed in" and "your
+  // session just expired" need different UI and a 401 cannot tell them apart.
+  session: () => get<AuthStatus>('/auth/session'),
+  login: (password: string) => send<AuthStatus>('POST', '/auth/login', { password }),
+  logout: () => send<AuthStatus>('POST', '/auth/logout'),
+
   upload: async (file: File): Promise<ImportReport> => {
     const form = new FormData()
     form.append('file', file)
-    const res = await fetch('/api/import', { method: 'POST', body: form })
+    const res = await request('/import', { method: 'POST', body: form })
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
     return res.json()
   },
@@ -649,7 +695,7 @@ export const api = {
     get<RiskStats>(`/stats/risk${book ? `?book=${encodeURIComponent(book)}` : ''}`),
   syncHealth: () => get<SyncHealth>('/sync/health'),
   setTransferBasisPolicy: async (policy: string) => {
-    const res = await fetch(`/api/settings/transfer-basis-policy?policy=${policy}`, { method: 'PUT' })
+    const res = await request(`/settings/transfer-basis-policy?policy=${policy}`, { method: 'PUT' })
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
     return res.json()
   },
@@ -659,7 +705,7 @@ export const api = {
   stats: (book: string, mode?: string) =>
     get<Stats>(`/stats?book=${encodeURIComponent(book)}${mode ? `&mode=${mode}` : ''}`),
   setAnalysisMode: async (mode: string) => {
-    const res = await fetch(`/api/settings/analysis-mode?mode=${mode}`, { method: 'PUT' })
+    const res = await request(`/settings/analysis-mode?mode=${mode}`, { method: 'PUT' })
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
     return res.json()
   },
@@ -669,7 +715,7 @@ export const api = {
     ungroup?: boolean
     note?: string
   }) => {
-    const res = await fetch('/api/groups/override', {
+    const res = await request('/groups/override', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

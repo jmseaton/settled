@@ -1,0 +1,9 @@
+Keeps this directory in the repository.
+
+docker-compose.yml bind-mounts ./certs into the web container, and Docker
+creates a missing bind-mount source itself — as root. That would leave the
+directory unwritable by the user who then tries to put a certificate in it,
+so it ships in the checkout instead, owned by whoever cloned.
+
+Put fullchain.pem and privkey.pem here; .gitignore keeps both out of git.
+See scripts/generate-self-signed-cert.sh and docs/deployment.md.

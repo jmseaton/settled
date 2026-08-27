@@ -131,6 +131,90 @@ jobs:
       - name: The entrypoint reported a clean schema
         run: docker compose logs backend | grep -q "Schema matches the ORM metadata"
 
+      # §1.3a. The unit tests cover the gate against the ASGI app directly;
+      # what they cannot cover is the half that only exists in the
+      # deployment — nginx choosing a TLS config from a mounted certificate,
+      # the redirect knowing the published port, and X-Forwarded-Proto
+      # reaching the backend so the session cookie comes back Secure.
+      - name: Restart the stack with a password and a certificate
+        run: |
+          docker compose down
+          ./scripts/generate-self-signed-cert.sh localhost 127.0.0.1
+          HASH=$(printf '%s' 'ci_only_not_a_real_password' \
+            | docker compose run --rm --no-deps -T --entrypoint python backend -m app.auth --stdin \
+            | tail -1)
+          test -n "$HASH"
+          cat >> .env <<EOF
+          SETTLED_AUTH_PASSWORD_HASH=$HASH
+          SETTLED_API_TOKEN=ci_only_not_a_real_token
+          SETTLED_TLS=on
+          EOF
+          docker compose up -d
+
+      - name: Wait for the secured stack
+        run: |
+          for i in $(seq 1 60); do
+            # /health is deliberately still plain HTTP and still open: it is
+            # what the container healthcheck calls.
+            if curl -fsS http://localhost:8080/health > /dev/null; then
+              echo "healthy after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "never became healthy"; docker compose logs; exit 1
+
+      - name: The compose value survived .env intact
+        run: |
+          # Compose interpolates `$` in .env values, which is why the hash is
+          # colon-separated. If that ever regresses, the symptom is a correct
+          # password being rejected — so check the container got the whole thing.
+          docker compose exec -T backend printenv SETTLED_AUTH_PASSWORD_HASH \
+            | grep -Eq '^scrypt:[0-9]+:[0-9]+:[0-9]+:[^:]+:[^:]+$'
+
+      - name: TLS is served and HTTP redirects to it
+        run: |
+          curl -fsSk https://localhost:8443/health > /dev/null
+          # -o /dev/null so a redirect body cannot mask a wrong Location.
+          location=$(curl -sS -o /dev/null -D - http://localhost:8080/trades \
+            | tr -d '\r' | awk '/^[Ll]ocation:/ {print $2}')
+          test "$location" = "https://localhost:8443/trades" \
+            || { echo "redirected to '$location'"; exit 1; }
+
+      - name: The API is closed without a session
+        run: |
+          code=$(curl -sSk -o /dev/null -w '%{http_code}' https://localhost:8443/api/settings)
+          test "$code" = "401" || { echo "got $code, expected 401"; exit 1; }
+
+      - name: Signing in opens it, and the cookie comes back Secure
+        run: |
+          headers=$(curl -sSk -D - -o /dev/null -c /tmp/jar \
+            -X POST https://localhost:8443/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"password":"ci_only_not_a_real_password"}')
+          echo "$headers" | grep -i '^set-cookie:' | grep -q 'HttpOnly'
+          # The backend speaks plain HTTP behind nginx, so this passing means
+          # X-Forwarded-Proto arrived and was believed.
+          echo "$headers" | grep -i '^set-cookie:' | grep -q 'Secure'
+          curl -fsSk -b /tmp/jar https://localhost:8443/api/settings > /dev/null
+
+      - name: The bearer token still drives sync from outside a browser
+        run: |
+          # §3.8's documented host-cron path. Sync is not configured in CI,
+          # so 400 is the right answer — 401 would mean the token was ignored.
+          code=$(curl -sSk -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Authorization: Bearer ci_only_not_a_real_token' \
+            https://localhost:8443/api/sync/run)
+          test "$code" = "400" || { echo "got $code, expected 400"; exit 1; }
+
+      - name: Security headers survive the per-location Cache-Control
+        run: |
+          # nginx's add_header does not merge into a block that sets its own,
+          # and both of the blocks serving the app set Cache-Control.
+          headers=$(curl -sSk -D - -o /dev/null https://localhost:8443/)
+          echo "$headers" | grep -qi 'X-Content-Type-Options: nosniff'
+          echo "$headers" | grep -qi 'X-Frame-Options: DENY'
+          echo "$headers" | grep -qi 'Cache-Control: no-cache'
+
       - name: Logs on failure
         if: failure()
         run: docker compose logs

@@ -264,3 +264,82 @@ select, input[type='date'] {
   margin-top: 8px;
   line-height: 1.4;
 }
+
+/* §1.3a — the sign-in screen. It replaces the whole app rather than
+   overlaying it: there is nothing behind it a signed-out browser may see. */
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* The sidebar's .brand carries a bottom border and padding that belong to a
+   column, not a card. */
+.login-card .brand {
+  border-bottom: none;
+  padding: 0;
+  margin: 0;
+}
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.login-field input {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 10px;
+  font-size: 14px;
+}
+.login-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.login-card .banner { margin-bottom: 0; }
+.login-note {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.login-note code, .banner code {
+  background: var(--panel-2);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 11px;
+}
+
+/* Sign out sits at the foot of the sidebar, away from the nav: it is not a
+   page, and a mis-click costs a password re-entry. */
+.session-box {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.session-box button {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.session-box button:hover { color: var(--text); border-color: var(--accent); }

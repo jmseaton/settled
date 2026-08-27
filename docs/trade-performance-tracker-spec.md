@@ -137,6 +137,10 @@ Replicate the *performance-tracking* subset of TradesViz for personal use: keep 
 - Live order/position streaming via TWS API or Client Portal Gateway. Statement-level sync only (Flex Web Service), which is sufficient for performance analysis and vastly simpler to operate.
 - Registration as an IBKR-listed third-party vendor (see §3.5).
 - Multi-user, auth, billing, sharing. Single user, local/LAN deployment.
+  *Amended (§1.3a): single-owner authentication and TLS were added after the fact.
+  Multi-user, billing and sharing remain non-goals and nothing added for §1.3a moves
+  toward them — there is one password, no user table, and no account model. What
+  changed is the assumption that "local/LAN" makes a door unnecessary.*
 - Multiple accounts (§14.5.1). Schema carries `account_id` so this is a later UI change, not a migration.
 - **Tax reporting of any kind** — no wash sales, no tax-lot elections, no ST/LT split (§14.5.3). FIFO matching serves performance attribution only. State this in the UI footer so it is never mistaken for a tax record.
 - Forex, crypto, bonds, CFDs.
