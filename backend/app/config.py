@@ -45,6 +45,50 @@ class Settings(BaseSettings):
     # skip the price fetch entirely (tests, or an offline deployment).
     price_fetch_enabled: bool = True
 
+    # --- §1.3a authentication -------------------------------------------
+    # The spec's §1.3 put auth out of scope on the grounds of "single user,
+    # local/LAN". That holds right up until the host is reachable from
+    # anywhere else, and this is an account's complete position and P&L
+    # history — so the door is now optional rather than absent.
+    #
+    # Auth is on exactly when a password hash is configured. Empty means the
+    # app runs open, as it always has, but says so in the log and in a
+    # banner on every page rather than silently. Generate a hash with:
+    #     docker compose exec backend python -m app.auth
+    auth_password_hash: str = ""
+
+    # Refuse to start with auth unconfigured. Off by default so an existing
+    # deployment upgrades without a surprise outage; on for anyone who would
+    # rather fail loudly than serve their statements to the LAN.
+    auth_required: bool = False
+
+    # Signing key for session cookies. Empty derives one from the password
+    # hash, which is unique per install (the hash carries a random salt) and
+    # invalidates every session when the password changes. Set it explicitly
+    # only to keep sessions alive across a password rotation.
+    auth_secret: str = ""
+
+    # A personal tool that demands a password every morning gets its password
+    # written on a sticky note. Fourteen days, sliding on use.
+    session_ttl_hours: int = 24 * 14
+
+    # Non-browser access for the documented host-cron path (a bare
+    # `curl -X POST /api/sync/run` has no cookie to send). Empty disables
+    # bearer auth entirely; when set it must be long and random.
+    api_token: str = ""
+
+    # Secure cookies. `auto` sets the flag when the request arrived over
+    # TLS — directly or via X-Forwarded-Proto from nginx — which is right
+    # for both the plain-HTTP and the TLS deployment without a second knob
+    # to keep in sync. Force it with true/false if a proxy lies.
+    cookie_secure: str = "auto"
+
+    # §1.3a — reject a state-changing request whose Origin is another site.
+    # SameSite=Lax already blocks the cookie on cross-site POSTs; this is
+    # the belt to that pair of braces. Disable only if a proxy rewrites
+    # Origin and Host so they cannot agree.
+    auth_strict_origin: bool = True
+
     # §8.2 / §14.6.3 — how many observations before the risk-adjusted
     # ratios are drawn at all. Configurable because it is a display
     # preference, not a statistical claim: every Sharpe now carries its own

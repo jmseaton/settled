@@ -375,6 +375,15 @@ npm run dev                          # http://localhost:5173
 Override the connection string with `SETTLED_DATABASE_URL` if your setup differs, and the
 payload archive location with `SETTLED_DATA_DIR` (default `./data`, gitignored).
 
+The dev loop runs unauthenticated by default, which is what you want while working. To
+exercise the login flow, set `SETTLED_AUTH_PASSWORD_HASH` before starting uvicorn —
+Vite's proxy keeps the frontend same-origin with the API, so the session cookie behaves
+exactly as it does in the deployment:
+
+```bash
+export SETTLED_AUTH_PASSWORD_HASH=$(python -m app.auth --stdin <<< 'a-dev-password')
+```
+
 ### Flex credentials — the primary data path
 
 Set these and the app feeds itself; leave them unset and it is an upload-only install — no
@@ -413,11 +422,32 @@ $EDITOR .env                 # POSTGRES_PASSWORD required; Flex credentials opti
 docker compose up -d --build
 ```
 
-Then `http://<host>:8080`. **No authentication sits in front of it** (§1.3 — single user,
-local/LAN), so put it somewhere you trust or set `SETTLED_BIND=127.0.0.1` and reach it
-over SSH.
+Then `http://<host>:8080`.
 
-Two things about this deployment are worth knowing before you rely on it.
+### A password and TLS, both optional (§1.3a)
+
+The spec put auth out of scope on the strength of "single user, local/LAN". That holds
+until the box is reachable from somewhere else, and this is an account's entire position
+and P&L history — so there is now a door, and it is optional rather than absent.
+
+```bash
+docker compose exec backend python -m app.auth   # prompts; prints a hash for .env
+./scripts/generate-self-signed-cert.sh           # LAN certificate for nginx
+docker compose up -d
+```
+
+One owner, one password, one session cookie — no user table, no roles, no reset flow,
+and no new dependency (scrypt and HMAC are both stdlib). nginx serves HTTPS when a
+certificate is present at `certs/` and plain HTTP when it is not.
+
+Leave both unset and the app runs exactly as it did before, open to anyone who can reach
+the port — but it now says so, in the backend log and in a banner on every page, rather
+than silently. `SETTLED_AUTH_REQUIRED=true` turns that into a refusal to start.
+`SETTLED_BIND=127.0.0.1` plus an SSH tunnel is still the strongest option and composes
+with both. The runbook covers rotation, the bearer token the host-cron sync needs, and
+why HSTS is off by default: [docs/deployment.md](docs/deployment.md).
+
+Two other things about this deployment are worth knowing before you rely on it.
 
 **Uptime at 05:00 ET is a real requirement, not a nicety.** Trades backfill — the sync
 window is a trailing 30 days, so a missed morning costs nothing there. Marks do not. Each
@@ -443,7 +473,7 @@ cd backend && source .venv/bin/activate
 python -m pytest tests/ -q
 ```
 
-421 tests, keyed by the spec's own §16 test numbers where they apply:
+462 tests, keyed by the spec's own §16 test numbers where they apply:
 
 | File | Covers |
 |---|---|
@@ -465,6 +495,7 @@ python -m pytest tests/ -q
 | `test_market_calendar.py` | NYSE holidays against the published calendar |
 | `test_gap_closure.py` | §6.4 analysis mode and manual overrides, §3.2 payload storage |
 | `test_schema_check.py` | the deployment drift detector — missing columns and tables, and what is deliberately not drift |
+| `test_auth.py` | §1.3a — hashing, session signing, the login throttle, the gate, the bearer path, and that an unconfigured install is unchanged |
 | `test_trade_construction.py` | FIFO paths the fixtures don't reach (partial closes, flips, DST) |
 | `test_stats_engine.py`, `test_parser.py`, `test_api.py` | unit and endpoint coverage |
 

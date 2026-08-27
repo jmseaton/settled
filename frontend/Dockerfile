@@ -20,5 +20,15 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+
+# The server configs ship as sources rather than as the live config: which
+# one becomes /etc/nginx/conf.d/default.conf is decided at container start
+# from whether a certificate is mounted (§1.3a).
+COPY nginx/ /etc/nginx/settled-src/
+COPY docker-entrypoint.d/20-settled-tls.sh /docker-entrypoint.d/20-settled-tls.sh
+RUN chmod +x /docker-entrypoint.d/20-settled-tls.sh
+
+# 443 as well as 80. Nothing listens on it without a certificate — the
+# entrypoint falls back to the HTTP-only config — so exposing it always is
+# a description of the image rather than a claim about the deployment.
+EXPOSE 80 443

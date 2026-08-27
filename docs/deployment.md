@@ -3,10 +3,24 @@
 Single host, Docker Compose, three containers: Postgres, the API with its
 in-process daily scheduler, and nginx serving the built frontend.
 
-There is **no authentication in front of any of this** (§1.3 — single user,
-local/LAN deployment). Anyone who can reach the port can read the account's
-full history and trigger a sync. Put it on a machine you trust, on a network
-you trust, or bind it to localhost and reach it over SSH.
+Two things are optional and independent (§1.3a): a **password**, and
+**TLS**. Neither is required to start. An install with neither behaves
+exactly as this stack did before they existed — anyone who can reach the
+port reads the account's full history and can trigger a sync — but it now
+says so on startup and in a banner on every page, rather than silently.
+
+Turn both on unless the box is genuinely yours alone and nothing else can
+reach it. They answer different questions and neither substitutes for the
+other:
+
+| | Answers | Without it |
+|---|---|---|
+| Password | *Who is asking?* | Anyone on the network reads everything |
+| TLS | *Who else is listening?* | The password and session cookie cross the network in clear text |
+
+A password over plain HTTP is worth less than it looks: it is sent in the
+clear on every sign-in. Set both, or set neither and keep the whole thing on
+localhost behind an SSH tunnel.
 
 ---
 
@@ -24,6 +38,7 @@ you trust, or bind it to localhost and reach it over SSH.
 git clone <your remote> settled && cd settled
 cp .env.example .env
 $EDITOR .env          # POSTGRES_PASSWORD is required; Flex credentials optional
+./scripts/generate-self-signed-cert.sh    # optional, but see below
 docker compose up -d --build
 docker compose logs -f backend
 ```
@@ -39,7 +54,24 @@ Schema matches the ORM metadata.
 INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
-Then open `http://<host>:8080`.
+Then open `http://<host>:8080` — or `https://<host>:8443` if you generated
+a certificate, in which case 8080 redirects there.
+
+With no password configured the log leads with the reason to set one:
+
+```
+WARNING  settled: NO AUTHENTICATION CONFIGURED — anyone who can reach this
+port can read the account's full position and P&L history and trigger a sync.
+```
+
+and nginx says the same about the transport:
+
+```
+[settled-tls] No certificate at /etc/nginx/certs/fullchain.pem — serving plain HTTP.
+[settled-tls] The session cookie and your password cross the network in the clear.
+```
+
+Both are fixed in the two sections below and neither blocks startup.
 
 With Flex credentials set you will also see the scheduler announce itself:
 
@@ -56,6 +88,136 @@ marks, so read the uptime section before settling for it.
 Before the numbers mean anything, set the tracking start date and value in
 Settings (§0.3). Every return, TWR and benchmark comparison is anchored to
 that epoch, and changing it later triggers a full rebuild.
+
+## Turning on the password
+
+```bash
+docker compose exec backend python -m app.auth
+```
+
+It prompts twice and prints one line — the password itself never reaches
+argv, your shell history, or `ps`. Paste that line into `.env`:
+
+```
+SETTLED_AUTH_PASSWORD_HASH=scrypt:16384:8:1:...
+```
+
+Then `docker compose up -d` (not `restart` — `.env` is read at container
+creation). The warning is replaced by:
+
+```
+INFO     settled: Authentication is on; sessions last 336h.
+```
+
+The UI asks for the password on next load; nothing else about the app
+changes.
+
+What it is and is not:
+
+- **One owner, one password.** No user table, no accounts, no roles, no
+  password-reset flow. Losing the password means generating a new hash and
+  restarting — a runbook step, not a feature.
+- The password is stored as an **scrypt hash**, never in plaintext, and
+  never in the database (§3.10's rule, applied to one more credential).
+- Changing the hash **invalidates every existing session**, because the
+  cookie signing key is derived from it. That is what a password change
+  should do, and it needs nothing revoked.
+- Sessions last `SETTLED_SESSION_TTL_HOURS` (default 14 days) and slide: a
+  browser in daily use is re-issued a cookie past the halfway mark, so it
+  never gets logged out mid-week on a fixed schedule.
+- Failed attempts back off exponentially, capped at 30 seconds. It is a
+  slowdown, not a lockout — fat-fingering it costs you half a minute.
+
+### Refusing to run without one
+
+```
+SETTLED_AUTH_REQUIRED=true
+```
+
+The backend then exits at startup rather than serving unauthenticated. Off
+by default so an existing install upgrades without an outage; on if you
+would rather have a crash-looping container than an open one.
+
+### The API token, for the host cron
+
+Turning the password on breaks any script hitting the API, including the
+host-cron sync path documented below — `curl` has no cookie jar. Give those
+a bearer token instead:
+
+```bash
+docker compose exec backend python -m app.auth --api-token
+```
+
+```
+SETTLED_API_TOKEN=<the printed value>
+```
+
+```bash
+curl -fsS -X POST -H "Authorization: Bearer $SETTLED_API_TOKEN" \
+    https://localhost:8443/api/sync/run
+```
+
+Leave it empty and there is no bearer path at all. It grants the same access
+the password does, so it belongs in `.env` and in the cron line's
+environment, nowhere else.
+
+`/health` stays open either way: it is what the container healthcheck calls,
+and it reports liveness and nothing else.
+
+---
+
+## Turning on TLS
+
+nginx serves HTTPS when it finds `certs/fullchain.pem` and
+`certs/privkey.pem` next to `docker-compose.yml`, and plain HTTP when it
+does not. There is no third setting to keep in sync.
+
+### On a LAN, with a self-signed certificate
+
+```bash
+./scripts/generate-self-signed-cert.sh                    # guesses this host
+./scripts/generate-self-signed-cert.sh settled.lan 192.168.1.40
+docker compose up -d
+```
+
+Then `https://<host>:8443`. Port 8080 keeps answering and redirects there.
+
+The first visit warns, because nobody has vouched for the certificate. That
+warning is doing real work — click through it on a network you do not
+control and you have accepted whatever answered — so silence it properly
+rather than getting used to it: import `certs/fullchain.pem` into the trust
+store of each machine you use, as a trusted *certificate*, not as a
+certificate authority.
+
+The traffic is encrypted identically either way. What a self-signed
+certificate lacks is a third party asserting the host is who it claims, and
+on your own LAN you are better placed to check that than any CA is.
+
+### With a real certificate
+
+If the host has a name pointed at it, get a certificate from Let's Encrypt
+however you like — a `certbot` container, DNS-01 from another machine, your
+router — and put the results at `certs/fullchain.pem` and
+`certs/privkey.pem`. nginx reads them at container start, so renewals need a
+`docker compose restart web` (a monthly cron line is enough).
+
+Only then consider `SETTLED_HSTS=on`. With a self-signed certificate HSTS is
+actively harmful: it converts the click-through warning into a wall with no
+bypass, on the one host you need to reach.
+
+### Settings
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SETTLED_TLS` | `auto` | `auto` serves TLS if a certificate is present; `on` refuses to start without one; `off` is plain HTTP with no warning |
+| `SETTLED_TLS_PORT` | `8443` | Published HTTPS port — also what the HTTP redirect points at, so the two cannot disagree |
+| `SETTLED_HSTS` | `off` | Only with a real certificate |
+
+`SETTLED_BIND=127.0.0.1` still works and still composes with both: password,
+TLS and an SSH tunnel are three independent layers, and on a machine you
+share with anyone the tunnel is the strongest of them.
+
+---
 
 ## Day-to-day
 
@@ -74,6 +236,9 @@ restart the service.
 
 ```bash
 curl -fsS -X POST http://localhost:8080/api/sync/run
+# with a password configured, and TLS:
+curl -fsS -X POST -H "Authorization: Bearer $SETTLED_API_TOKEN" \
+    https://localhost:8443/api/sync/run
 ```
 
 Synchronous — it runs the two-step Flex fetch and returns the import report,
@@ -93,6 +258,9 @@ Check what it did:
 curl -fsS http://localhost:8080/api/sync/runs | head -c 2000
 curl -fsS http://localhost:8080/api/sync/health
 ```
+
+(Add the `Authorization: Bearer` header to both once a password is set —
+every `/api/` path needs it, `/health` does not.)
 
 ## Upgrading
 
@@ -203,8 +371,12 @@ Practical consequences:
 Set `SETTLED_SCHEDULER_ENABLED=false` and drive it externally:
 
 ```cron
-0 5 * * 1-5 curl -fsS -X POST http://localhost:8080/api/sync/run
+0 5 * * 1-5 curl -fsS -X POST -H "Authorization: Bearer $SETTLED_API_TOKEN" http://localhost:8080/api/sync/run
 ```
+
+(Drop the header if no password is configured. Keep the token out of the
+crontab itself — put it in the cron user's environment or a sourced file
+that is mode 600, since a crontab is world-readable on some systems.)
 
 Note this fires on weekdays only and does not know the market calendar, so
 it will attempt a sync on holidays; the app skips non-trading days itself.
@@ -216,6 +388,61 @@ cannot sync at once.
 
 **`POSTGRES_PASSWORD` error on `up`** — compose refuses to start without it.
 Set it in `.env`.
+
+**Locked out — the password is gone** — there is nothing to recover, and
+nothing is lost. Generate a new hash, put it in `.env`, `docker compose up -d`.
+Data is untouched; every existing session is invalidated, which is the point.
+
+**"Incorrect password" for a password you are certain of** — check what
+actually reached the container:
+
+```bash
+docker compose exec backend printenv SETTLED_AUTH_PASSWORD_HASH
+```
+
+If it is empty, truncated, or missing its numbers, `.env` mangled it.
+Compose interpolates `$` in values, so a hash containing `$` arrives with
+`$16384` and friends replaced by nothing — which is why generated hashes are
+colon-separated. A hash generated before that change still verifies, but
+only if it survives `.env` intact; regenerate it if this is what you see.
+Do not wrap the value in quotes.
+
+If the value is right and login still fails, the backend says so at startup:
+a hash it cannot parse is a configuration error, not a wrong password, and
+it is logged as one.
+
+**Every API call 401s after turning the password on** — expected for
+anything that is not the browser. Scripts, the host cron, and any bookmarked
+`curl` need `Authorization: Bearer $SETTLED_API_TOKEN`. `/health` does not.
+
+**The browser warns about the certificate** — expected with a self-signed
+one on first visit. Import `certs/fullchain.pem` into that machine's trust
+store to stop it, rather than clicking through each time. A warning that
+appears on a host that previously did *not* warn is worth stopping to read:
+either the certificate was regenerated, or something else is answering.
+
+**`https://` refuses the connection, `http://` works** — nginx found no
+certificate and fell back:
+
+```bash
+docker compose logs web | grep settled-tls
+```
+
+`No certificate at ...` means `certs/fullchain.pem` and `certs/privkey.pem`
+are not both present and readable inside the container. Check the names
+exactly, and that `./certs` is where `docker-compose.yml` is. Set
+`SETTLED_TLS=on` to make this a startup failure instead of a silent
+fallback.
+
+**The HTTP redirect lands on a port nothing answers** — `SETTLED_TLS_PORT`
+and the published HTTPS port have to be the same value; the redirect is
+built from the former. Both come from `.env`, so they only disagree if one
+was overridden elsewhere.
+
+**Browser refuses to load over HTTP after turning HSTS off** — HSTS is
+remembered by the browser, not re-checked. Clear it for that host in the
+browser's site settings. This is why it is off by default and why it should
+stay off with a self-signed certificate.
 
 **Backend restarting** — `docker compose logs backend`. Most often the
 database URL and the Postgres credentials disagree after a `.env` edit that

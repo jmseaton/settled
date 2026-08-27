@@ -4,6 +4,11 @@
 # Three containers: Postgres, the API with its in-process scheduler, and
 # nginx serving the built frontend. Start with `docker compose up -d` after
 # copying .env.example to .env. See docs/deployment.md.
+#
+# Both halves of §1.3a are optional and independent: a password hash turns
+# authentication on, a certificate in ./certs turns TLS on. Neither is
+# required to start, and an install with neither behaves exactly as this
+# stack did before they existed — visibly, not silently.
 
 services:
   db:
@@ -46,6 +51,13 @@ services:
       SETTLED_PRICE_SOURCE: ${SETTLED_PRICE_SOURCE:-auto}
       SETTLED_SCHEDULER_ENABLED: ${SETTLED_SCHEDULER_ENABLED:-true}
       SETTLED_MIN_SAMPLE_TRADING_DAYS: ${SETTLED_MIN_SAMPLE_TRADING_DAYS:-30}
+      # §1.3a — the password lives here as a scrypt hash, never as the
+      # password. Empty runs the app open, exactly as it did before auth
+      # existed, and says so in the log and in a banner on every page.
+      SETTLED_AUTH_PASSWORD_HASH: ${SETTLED_AUTH_PASSWORD_HASH:-}
+      SETTLED_AUTH_REQUIRED: ${SETTLED_AUTH_REQUIRED:-false}
+      SETTLED_API_TOKEN: ${SETTLED_API_TOKEN:-}
+      SETTLED_SESSION_TTL_HOURS: ${SETTLED_SESSION_TTL_HOURS:-336}
       # Cosmetic only — it makes `docker compose logs` read in market time.
       # The 05:00 schedule is anchored to America/New_York in code and does
       # not depend on this (§3.8).
@@ -73,11 +85,27 @@ services:
       # race it loses often enough to matter.
       backend:
         condition: service_healthy
+    environment:
+      # §1.3a — `auto` serves TLS when a certificate is mounted and plain
+      # HTTP when one is not, so this file is the same on a laptop and on
+      # the box in the cupboard. `on` refuses to start without one.
+      SETTLED_TLS: ${SETTLED_TLS:-auto}
+      # Off by default and deliberately so: HSTS plus a self-signed
+      # certificate turns the browser's click-through warning into a wall.
+      SETTLED_HSTS: ${SETTLED_HSTS:-off}
+      # The published port, not the container's, because that is what the
+      # HTTP->HTTPS redirect has to send the browser to.
+      SETTLED_PUBLIC_HTTPS_PORT: ${SETTLED_TLS_PORT:-8443}
+    volumes:
+      # fullchain.pem + privkey.pem. Absent, nginx serves plain HTTP and
+      # says so at startup; see scripts/generate-self-signed-cert.sh.
+      - ./certs:/etc/nginx/certs:ro
     ports:
-      # Host port only. Bind to 127.0.0.1 instead of 0.0.0.0 by setting
-      # SETTLED_BIND=127.0.0.1 if the box is shared — there is no
-      # authentication in front of this (§1.3: single user, local/LAN).
+      # Host ports only. Bind to 127.0.0.1 instead of 0.0.0.0 by setting
+      # SETTLED_BIND=127.0.0.1 if the box is shared, or if you would rather
+      # reach it over an SSH tunnel than over TLS.
       - "${SETTLED_BIND:-0.0.0.0}:${SETTLED_PORT:-8080}:80"
+      - "${SETTLED_BIND:-0.0.0.0}:${SETTLED_TLS_PORT:-8443}:443"
 
 volumes:
   settled-db:

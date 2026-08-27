@@ -16,3 +16,9 @@ dist/
 
 .pytest_cache/
 .DS_Store
+
+# §1.3a — TLS material. The private key is the whole of the transport's
+# security and a certificate in git is a certificate to reissue.
+certs/
+*.pem
+*.key
