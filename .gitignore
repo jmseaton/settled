@@ -1,0 +1,18 @@
+# §3.2 archived broker payloads. These are real account statements —
+# positions, P&L, cost basis — and must never reach source control. The
+# fixtures README says it for the fixtures; it goes double for live data.
+data/
+backend/data/
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+node_modules/
+dist/
+*.local
+
+.pytest_cache/
+.DS_Store

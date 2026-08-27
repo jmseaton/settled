@@ -1,0 +1,266 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1e222b;
+  --border: #2a2f3a;
+  --text: #e6e8ec;
+  --muted: #98a0ae;
+  --green: #3fb950;
+  --red: #f85149;
+  --amber: #d29922;
+  --accent: #58a6ff;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+a { color: var(--accent); }
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 210px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+}
+
+.brand {
+  padding: 0 20px 18px;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+
+.brand small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.nav button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 20px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.nav button:hover { color: var(--text); background: var(--panel-2); }
+.nav button.active {
+  color: var(--text);
+  border-left-color: var(--accent);
+  background: var(--panel-2);
+}
+
+.main {
+  flex: 1;
+  padding: 24px 28px 60px;
+  min-width: 0;
+}
+
+h1 { font-size: 20px; margin: 0 0 4px; font-weight: 620; }
+h2 { font-size: 15px; margin: 26px 0 10px; font-weight: 600; }
+.subtitle { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+.stat .value { font-size: 19px; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.stat .note { color: var(--muted); font-size: 11px; margin-top: 3px; }
+
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+.muted { color: var(--muted); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+th, td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 550;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+
+td.num, th.num { text-align: right; }
+tbody tr:hover { background: var(--panel-2); }
+
+.scroll { max-height: 65vh; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+
+.banner {
+  border-radius: 8px;
+  padding: 11px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  border: 1px solid;
+  line-height: 1.5;
+}
+.banner.warn { background: #2a220c; border-color: #5a4a13; color: #e3c46a; }
+.banner.err { background: #2d1618; border-color: #5e2429; color: #f2a5a1; }
+.banner.ok { background: #12261a; border-color: #1e4429; color: #7fce8e; }
+.banner.info { background: #12202e; border-color: #1d3a55; color: #93c5f0; }
+
+button.primary {
+  background: var(--accent);
+  color: #06121f;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+}
+button.primary:disabled { opacity: 0.5; cursor: default; }
+
+select, input[type='date'] {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 13px;
+}
+
+.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+
+/* §9 global filters. Multi-selects are several rows tall, so their labels
+   stack above rather than sitting inline — inline, a four-row listbox
+   overlaps whatever control follows it. */
+.filter-bar { align-items: flex-start; }
+.filter-bar label { display: flex; flex-direction: column; gap: 4px; }
+.filter-bar select[multiple] { min-width: 130px; padding: 4px; }
+
+.tag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.footer-note {
+  margin-top: 30px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dropzone {
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  padding: 34px;
+  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+.dropzone:hover { border-color: var(--accent); color: var(--text); }
+
+/* Expanded strategy legs — visually subordinate to their parent group row. */
+.sub-row td {
+  background: var(--panel-2);
+  font-size: 13px;
+}
+
+/* Quiet confirmation that auto-sync is alive; the loud version is .banner. */
+.sync-status {
+  font-size: 12px;
+  padding: 4px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+/* §6.4 global analysis toggle — deliberately in the sidebar, not a page
+   control, because it changes what every page's numbers mean. */
+.mode-switch {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.mode-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.mode-switch button {
+  display: inline-block;
+  width: auto;
+  padding: 4px 10px;
+  margin-right: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+.mode-switch button.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.mode-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.4;
+}

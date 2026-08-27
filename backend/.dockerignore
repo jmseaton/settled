@@ -1,0 +1,11 @@
+# §3.2 — archived broker payloads are real account statements. They must
+# never reach an image layer any more than they may reach source control.
+data/
+
+tests/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env

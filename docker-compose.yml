@@ -1,0 +1,84 @@
+# Settled — single-host deployment (§13: "deliberately boring, because this
+# is a personal tool that should still work in three years").
+#
+# Three containers: Postgres, the API with its in-process scheduler, and
+# nginx serving the built frontend. Start with `docker compose up -d` after
+# copying .env.example to .env. See docs/deployment.md.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-settled}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-settled}
+    volumes:
+      # Named volume, not a bind mount: this is the account's entire history
+      # and it must survive `docker compose down` and image upgrades alike.
+      - settled-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-settled} -d ${POSTGRES_DB:-settled}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Not published to the host. Nothing outside this network needs the
+    # database, and an exposed Postgres on a LAN box is a standing invitation.
+    expose:
+      - "5432"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SETTLED_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-settled}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-settled}
+      SETTLED_DATA_DIR: /data
+      # §3.10 — credentials arrive from the environment and are never
+      # written to the database or a log line. Empty is a valid state: the
+      # app runs upload-only and simply starts no scheduler.
+      SETTLED_FLEX_TOKEN: ${SETTLED_FLEX_TOKEN:-}
+      SETTLED_FLEX_QUERY_ID: ${SETTLED_FLEX_QUERY_ID:-}
+      SETTLED_TIINGO_API_KEY: ${SETTLED_TIINGO_API_KEY:-}
+      SETTLED_PRICE_SOURCE: ${SETTLED_PRICE_SOURCE:-auto}
+      SETTLED_SCHEDULER_ENABLED: ${SETTLED_SCHEDULER_ENABLED:-true}
+      SETTLED_MIN_SAMPLE_TRADING_DAYS: ${SETTLED_MIN_SAMPLE_TRADING_DAYS:-30}
+      # Cosmetic only — it makes `docker compose logs` read in market time.
+      # The 05:00 schedule is anchored to America/New_York in code and does
+      # not depend on this (§3.8).
+      TZ: ${TZ:-America/New_York}
+    volumes:
+      # §3.2 — the SHA-256-keyed payload archive. Losing this does not lose
+      # the derived data, but it does lose the ability to rebuild from
+      # source after a Flex window rolls off.
+      - settled-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    expose:
+      - "8000"
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      # Healthy, not merely started: nginx resolves `backend` at config load
+      # and exits if the name is not there yet, which on a host reboot is a
+      # race it loses often enough to matter.
+      backend:
+        condition: service_healthy
+    ports:
+      # Host port only. Bind to 127.0.0.1 instead of 0.0.0.0 by setting
+      # SETTLED_BIND=127.0.0.1 if the box is shared — there is no
+      # authentication in front of this (§1.3: single user, local/LAN).
+      - "${SETTLED_BIND:-0.0.0.0}:${SETTLED_PORT:-8080}:80"
+
+volumes:
+  settled-db:
+  settled-data:
