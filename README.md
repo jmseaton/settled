@@ -3,9 +3,15 @@
 [![Tests](https://github.com/jmseaton/settled/actions/workflows/test.yml/badge.svg)](https://github.com/jmseaton/settled/actions/workflows/test.yml)
 
 Single-user, self-hosted performance tracking for a personal Interactive Brokers account.
-Imports IBKR TradeLog (`.tlg`) exports, reconstructs round-trip trades from raw executions
-by FIFO lot matching, reconciles the result against the broker's own position records, and
-reports performance statistics.
+
+**It keeps itself current.** A scheduled daily pull from IBKR's Flex Web Service is the
+primary data path: each run fetches a trailing 30-day statement — executions, IB's own
+closed lots, open-position marks, cash transactions, transfers and `ChangeInNAV` — then
+reconstructs round-trip trades from raw executions by FIFO lot matching, reconciles the
+result against the broker's own position *and* realized-P&L records, and recomputes every
+account- and trade-level statistic. File upload (`.tlg` TradeLog or Activity Flex XML)
+remains as backfill and as the way to run the app without credentials; both paths converge
+on one pipeline the moment the bytes are in hand.
 
 Built to [`docs/trade-performance-tracker-spec.md`](docs/trade-performance-tracker-spec.md).
 Section references throughout the code (`§5.2`, `§14.1`, …) point into that spec.
@@ -15,43 +21,62 @@ Section references throughout the code (`§5.2`, `§14.1`, …) point into that 
 
 ## What is built
 
-**Phases 1, 1b, 2, 3, and 4** of the spec's milestones (§15):
+**Phases 1, 1b, 2, 3, and 4** of the spec's milestones (§15), grouped by where each piece
+sits in the path from broker to chart:
+
+**Getting the data in**
 
 | Area | Status |
 |---|---|
-| **Assignment and exercise — detection, linking, chains, the banner (§5.4)** | ✅ |
-| **Unrealized P&L and true account value, from Flex marks (§12)** | ✅ |
-| **Tags, notes, bulk operations (§4.8, §4.9, §10.3, §11.1–11.2)** | ✅ |
-| **Stop/target with R-value, manual trade entry, splits (§11.3)** | ✅ |
-| **Risk ratios on account returns as well as trade P&L (§8.2)** | ✅ |
-| **Trend chart, regime markers, distribution histogram (§9.4, §6.6)** | ✅ |
-| **Curatable dashboard, and Sharpe reported with its confidence interval (§14.6)** | ✅ |
+| **Flex Web Service client** — two-step protocol, classified retries, token redaction (§3.7–3.8) | ✅ |
+| **Sync runner, daily scheduler, run history, staleness guard** (§3.8) | ✅ |
+| **Flex XML parser** — Trades, CLOSED_LOT, SecurityInfo, OpenPositions, Transfers, CashTransactions, ChangeInNAV (§3.9) | ✅ |
+| `.tlg` parser, all record types and section layouts (§2) | ✅ |
+| Import pipeline — parser registry, checksum, idempotent upsert, import report (§3.1–3.3) | ✅ |
+| **Original payloads archived by SHA-256** (§3.2) | ✅ |
 | **Cash transactions — Flex ingestion, type mapping, manual CRUD and CSV paste (§4.7, §7.1)** | ✅ |
+| **NYSE market calendar** — trading-day DTE and scheduler skips (§9.5, §3.8) | ✅ |
+| **Read-only Flex diagnostics probe** (`python -m app.flex.diagnose`) | ✅ |
+
+**Trades, and checking them against the broker**
+
+| Area | Status |
+|---|---|
+| Reconciliation against the broker position snapshot (§3.4) | ✅ |
+| **CLOSED_LOT reconciliation against IB's own `fifoPnlRealized` (§3.4)** | ✅ |
+| Trade construction — FIFO, position flips, expirations (§5.1–5.3) | ✅ |
+| **Transferred positions — synthetic opening legs, both basis policies (§5.5)** | ✅ |
+| **Assignment and exercise — detection, linking, chains, the banner (§5.4)** | ✅ |
+| **Spread grouping, classification, manual overrides** (§6.1–6.4) | ✅ |
+| **Analyze by Leg / Analyze by Strategy toggle** (§6.4) | ✅ |
+| Books — `Holdings` vs `Options Income` (§6.5) | ✅ |
+
+**Performance**
+
+| Area | Status |
+|---|---|
 | **Performance epoch — configurable, IBKR cross-check, full rebuild on change (§0.3)** | ✅ |
 | **Account equity curve with selectable variants (§7.2, §7.4)** | ✅ |
 | **TWR, XIRR, CAGR and simple return (§7.3)** | ✅ |
 | **SPY benchmark — cash-flow-matched shadow portfolio, alpha/beta/IR (§7.5)** | ✅ |
 | **`PriceSource` adapters (Tiingo, Stooq) and the `price_bars` cache (§4.10)** | ✅ |
+| **Unrealized P&L and true account value, from Flex marks (§12)** | ✅ |
+| Statistics — P&L, ratios, sample-size gating (§8.1–8.2) | ✅ |
+| **Risk ratios on account returns as well as trade P&L (§8.2)** | ✅ |
+
+**Interface**
+
+| Area | Status |
+|---|---|
 | **Chart grid — any metric × any dimension, with drill-down (§9.1–9.2)** | ✅ |
 | **Global filters and the monthly P&L calendar heatmap (§9.3)** | ✅ |
-| `.tlg` parser, all record types and section layouts (§2) | ✅ |
-| **Flex XML parser** — Trades, CLOSED_LOT, SecurityInfo, OpenPositions, Transfers, CashTransactions, ChangeInNAV (§3.9) | ✅ |
-| **Flex Web Service client** — two-step protocol, classified retries, token redaction (§3.7–3.8) | ✅ |
-| **Sync runner, daily scheduler, run history, staleness guard** (§3.8) | ✅ |
-| **NYSE market calendar** — trading-day DTE and scheduler skips (§9.5, §3.8) | ✅ |
-| **Spread grouping, classification, manual overrides** (§6.1–6.4) | ✅ |
-| **Analyze by Leg / Analyze by Strategy toggle** (§6.4) | ✅ |
-| **Original payloads archived by SHA-256** (§3.2) | ✅ |
-| Import pipeline — parser registry, checksum, idempotent upsert, import report (§3.1–3.3) | ✅ |
-| Reconciliation against the broker position snapshot (§3.4) | ✅ |
-| **CLOSED_LOT reconciliation against IB's own `fifoPnlRealized` (§3.4)** | ✅ |
-| Trade construction — FIFO, position flips, expirations (§5.1–5.3) | ✅ |
-| **Transferred positions — synthetic opening legs, both basis policies (§5.5)** | ✅ |
-| Books — `Holdings` vs `Options Income` (§6.5) | ✅ |
-| Statistics — P&L, ratios, sample-size gating (§8.1–8.2) | ✅ |
+| **Trend chart, regime markers, distribution histogram (§9.4, §6.6)** | ✅ |
+| **Curatable dashboard, and Sharpe reported with its confidence interval (§14.6)** | ✅ |
 | Cumulative net P&L chart (§9.3 #1) | ✅ |
 | Expiry Watch (§9.5) | ✅ |
 | Executions and trades grids (§10) | ✅ |
+| **Tags, notes, bulk operations (§4.8, §4.9, §10.3, §11.1–11.2)** | ✅ |
+| **Stop/target with R-value, manual trade entry, splits (§11.3)** | ✅ |
 
 **Deliberately not built yet**, and why it matters when reading the numbers:
 
@@ -70,6 +95,66 @@ Section references throughout the code (`§5.2`, `§14.1`, …) point into that 
   the event rather than depending on memory.
 - **The remaining §9.4 views** — treemap, streak chart, scatter compare. Drawdown,
   distribution and trend are built.
+- **The token-expiry countdown (§0.6).** An expired token is classified, never retried, and
+  raises the sync banner within a day — but that is detection after the fact. The T-30 and
+  T-7 warnings the spec asks for need `token_issued_at` / `token_expires_at` in config, and
+  those settings do not exist yet, so the expiry date still has to live somewhere a human
+  looks.
+
+## How data gets in
+
+Two paths, one pipeline. `parse → validate → stage → normalize instruments → idempotent
+upsert of executions → rebuild trades → recompute metrics → reconcile → import report`
+(§3.1–3.3) runs identically whichever way the bytes arrived; a parser registry keyed on
+`source_format` is the only branch, so a third format would be a new adapter rather than a
+new pipeline.
+
+**The sync is the path that matters.** With `SETTLED_FLEX_TOKEN` and `SETTLED_FLEX_QUERY_ID`
+set, an in-process scheduler runs the two-step Flex protocol at **05:00 ET** every trading
+day — after IB's overnight settlement and P&L processing, which is why several of §3.8's
+transient error codes exist at all.
+
+- **A trailing 30-day window on every run, not "since last sync".** Trades get amended and
+  same-day busts corrected, and a since-last-sync window would never see them again. The
+  overlap costs nothing because executions upsert on the broker's own identifiers.
+- **Days the market was closed are skipped**, against the NYSE calendar rather than a
+  weekday test. Nothing is lost by skipping: Monday's window covers the weekend, including
+  Sunday-evening futures sessions.
+- **Every attempt leaves a row in `flex_sync_runs`, failures included**, and errors are
+  classified: transient ones retry, credential and configuration ones never do and raise an
+  alert instead, because an expired token needs a human rather than a fourth attempt.
+- **The banner reads from the last *success*, not the last attempt** (`/api/sync/health`),
+  and distinguishes "no scheduler configured" from "scheduled and healthy" from "failing and
+  needs you". See the staleness note under [Conventions](#conventions-worth-knowing).
+- **One Postgres advisory lock per run**, so a second worker or a second container steps
+  aside rather than syncing concurrently against a token limited to one request per second.
+- **The token never reaches the database** (§3.10). Environment only, and redacted from
+  every log line and every stored error message: it grants read access to the full statement
+  history and travels as a query parameter.
+- **A sync also refreshes the benchmark price bars** (§7.5). A dead price API marks that line
+  stale; it does not fail the run, because a price outage is not a reason to lose a day of
+  trade data.
+
+`POST /api/sync/run` does the same work on demand, under the same lock and recorded with
+trigger `MANUAL`. It takes no date parameters — there is no path that forces a statement for
+a past date. When a sync fails opaquely, `python -m app.flex.diagnose` probes the service
+read-only and prints a plain request beside a date-overridden one; that is the one
+distinction the app cannot make from the inside, because every request it sends overrides
+the dates.
+
+**Upload is the fallback, and it is a genuine subset.** The Import page accepts either
+format and detects which from the content, and re-importing an overlapping window is safe.
+But a `.tlg` carries only executions and position lots. It has no `transactionID` or
+`brokerageOrderID` (so combo grouping falls back to exact-timestamp matching, §6.1), no
+`CLOSED_LOT` records (so the broker P&L check below cannot run), and no cash transactions,
+transfers, position marks or `ChangeInNAV` — so §7's account-level machinery has nothing to
+work from beyond what you type in by hand (§7.1). Everything in the next section, the
+reconciliation to the cent included, comes off the Flex path.
+
+**A missed morning is a permanent hole.** Trades backfill; marks do not. Each statement
+reports open positions as of its `period_end`, so one run contributes exactly one day of
+marks however wide its window, and no later run can fill a day the scheduler missed — see
+[Deployment](#deployment) for why that makes uptime a real requirement rather than a nicety.
 
 ## Account-level performance
 
@@ -290,10 +375,13 @@ npm run dev                          # http://localhost:5173
 Override the connection string with `SETTLED_DATABASE_URL` if your setup differs, and the
 payload archive location with `SETTLED_DATA_DIR` (default `./data`, gitignored).
 
-### Flex sync (optional)
+### Flex credentials — the primary data path
 
-Credentials come from the environment and are never written to the database (§3.10) — the
-token grants read access to your full statement history and travels as a query parameter:
+Set these and the app feeds itself; leave them unset and it is an upload-only install — no
+position marks, no `CLOSED_LOT` cross-check, and account-level return only as far as
+hand-entered cash carries it (see [How data gets in](#how-data-gets-in)). Credentials come
+from the environment and are never written to the database (§3.10) — the token grants read
+access to your full statement history and travels as a query parameter:
 
 ```bash
 export SETTLED_FLEX_TOKEN=...      # Client Portal -> Flex Web Service Configuration
@@ -301,13 +389,18 @@ export SETTLED_FLEX_QUERY_ID=...   # the Activity Flex Query id from §3.6
 ```
 
 With those set, the app schedules a sync for **05:00 ET daily** and skips days the market
-was closed. `POST /api/sync/run` triggers one on demand. Without them, no scheduler starts
-at all — an upload-only deployment has no job failing every morning.
+was closed. `POST /api/sync/run` triggers one on demand, and `python -m app.flex.diagnose`
+probes the service read-only when a run fails opaquely. Without them, no scheduler starts at
+all — an upload-only deployment has no job failing every morning.
 
 Set `SETTLED_SCHEDULER_ENABLED=false` to run the app with credentials but drive sync
 externally (a host cron, say). Each run takes a Postgres advisory lock, so a second worker
 or a second container steps aside rather than syncing concurrently against a token limited
 to one request per second.
+
+The token expires — one year at most (§0.6), and generating a new one invalidates the
+current one, so rotation is deliberate rather than automatic. Error `1012` is never retried
+and alerts in the same class as a credential failure.
 
 ## Deployment
 
@@ -350,7 +443,7 @@ cd backend && source .venv/bin/activate
 python -m pytest tests/ -q
 ```
 
-398 tests, keyed by the spec's own §16 test numbers where they apply:
+421 tests, keyed by the spec's own §16 test numbers where they apply:
 
 | File | Covers |
 |---|---|
@@ -366,6 +459,7 @@ python -m pytest tests/ -q
 | `test_flex_import.py` | §16.1 tests 26–28 and §16.3 transfer handling |
 | `test_flex_client.py` | §16.1 tests 17–25, mocked HTTP, no live calls |
 | `test_flex_sync.py` | §3.8 runner, run history, and §16.1 test 24 staleness |
+| `test_flex_diagnostics.py` | what the app says when IBKR answers with an HTML error page, a CSV query or an empty body — and that the token never appears in the message |
 | `test_grouping.py` | §16 tests 12–14 and §16.4 tests 56–63 |
 | `test_scheduler.py` | §3.8 schedule, trading-day guard, advisory lock |
 | `test_market_calendar.py` | NYSE holidays against the published calendar |
@@ -435,27 +529,45 @@ for round-trip mechanics only, never as a source of truth for BCGX P&L.
 
 ```
 backend/app/
+  flex/           Web Service client, error classification, sync runner,
+                  scheduler, diagnostics probe (§3.7-3.8)
   parsers/        .tlg and Flex XML parsing, symbol decoding (§2, §3.9)
-  flex/           Flex Web Service client and error classification (§3.7-3.8)
-  importer/       pipeline, instrument normalization, both reconciliations (§3)
-  trades/         FIFO trade construction, transfer basis, grouping (§5, §6)
-  stats/          daily snapshots + the pure-function metric engine (§8)
+  importer/       pipeline, instrument normalization, cash, closed lots,
+                  option events, corporate actions, both reconciliations (§3)
+  trades/         FIFO trade construction, transfer basis, grouping,
+                  assignment chains (§5, §6)
+  stats/          daily snapshots, the pure-function metric engine, Sharpe
+                  significance (§8, §14.6)
+  performance/    epoch, return functions, equity curve, SPY benchmark (§0.3, §7)
+  prices/         PriceSource adapters (Tiingo, Stooq) and the bar cache (§4.10)
+  charts/         the dimension × metric grid, filters, calendar, trend,
+                  dashboard layout (§9)
+  cash/           manual cash-transaction entry and CSV paste (§7.1)
+  journal/        tags, notes, stops/targets, manual entries, re-anchoring (§11)
   expiry_watch/   forward-looking expiry projections (§9.5)
   contracts/      static MES/ES contract reference (Appendix D)
+  models/         SQLAlchemy models, including flex_sync_runs (§4)
+  market_calendar.py  NYSE trading days, computed rather than hardcoded
+  schema_check.py     the deployment schema-drift detector (§13)
   api/            FastAPI routes
 frontend/src/
-  pages/          Import, Statistics, Strategies, Trades, Executions, Expiry Watch
+  SyncBanner.tsx  §3.8 staleness and credential-failure banner
+  pages/          Import, Dashboard, Performance, Statistics, Charts, Trend,
+                  Calendar, Strategies, Trades, Executions, Cash, Journal,
+                  Expiry Watch
 ```
 
 Raw executions are never mutated; trades, snapshots, and every statistic are rebuilt from
-them on each import (§3.2, §13). That is what makes the matching algorithm safe to change.
+them on each sync or upload (§3.2, §13). That is what makes the matching algorithm safe to
+change — and it is why a daily sync costs nothing to re-run over a window it has already
+seen.
 
 ## Conventions worth knowing
 
 - **`proceeds` is signed cost** in the TradeLog convention — a sell is negative. Cash flow
   is `−proceeds + commission`, with commission already negative (§2.2). Flex's field of the
-  same name is the *negation*; do not share arithmetic between the two parsers when the
-  Flex path is added (§3.9).
+  same name is the *negation*, and the two parsers accordingly share no arithmetic — each
+  normalizes at its own boundary (§3.9).
 - **Trading day ≠ calendar day for futures.** A futures or futures-option fill at or after
   18:00 ET belongs to the next session (§14.1). Derived once, at import, and stored on the
   execution; every `GROUP BY` uses it.

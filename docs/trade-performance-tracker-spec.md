@@ -110,7 +110,7 @@ Phases in §15 are ordered deliberately: **the reconciliation check (§3.4) must
 
 ### 1.1 Goal
 
-Replicate the *performance-tracking* subset of TradesViz for personal use: import IBKR TradeLog files, reconstruct round-trip trades from raw executions, compute a comprehensive statistics catalog, and present it through an interactive dashboard. Add manual cash-transaction entry so account-level return (not just trade P&L) can be measured.
+Replicate the *performance-tracking* subset of TradesViz for personal use: keep an IBKR account's activity current by an automated daily Flex Web Service sync (with `.tlg` / Flex XML upload as the fallback and backfill path), reconstruct round-trip trades from raw executions, compute a comprehensive statistics catalog, and present it through an interactive dashboard. Ingest the statement's cash transactions — and accept manual entry alongside them — so account-level return (not just trade P&L) can be measured.
 
 ### 1.2 In scope
 
