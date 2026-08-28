@@ -122,7 +122,17 @@ def import_file(
     parser = PARSERS[fmt]
 
     try:
-        parsed: ParseResult = parser(content.decode("utf-8"))
+        # A binary or mis-encoded upload used to raise UnicodeDecodeError from
+        # here, which nothing caught and the API returned as a 500. It is a
+        # bad file, so it is the client's error: re-raise it as the parse
+        # failure it is, and it takes the FAILED-record path below like any
+        # other unreadable upload.
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            error = FlexParseError if fmt is SourceFormat.FLEX_XML else TlgParseError
+            raise error(f"Not UTF-8 text: {exc}") from exc
+        parsed: ParseResult = parser(text)
     except (TlgParseError, FlexParseError) as exc:
         db.rollback()
         record = ImportFile(

@@ -16,6 +16,7 @@ are not reliably parseable at all.
 
 import datetime as dt
 import xml.etree.ElementTree as ET
+from xml.parsers import expat
 
 from app.models.enums import AssetClass, Right
 from app.parsers.base import (
@@ -130,7 +131,55 @@ def _description_root(description: str | None) -> str | None:
     return description.split()[0] if description else None
 
 
+class _ReachedRoot(Exception):
+    """Control flow, not an error — see _reject_doctype."""
+
+
+def _reject_doctype(text: str) -> None:
+    """Refuse a document that declares a DTD.
+
+    A Flex statement never carries one, so this costs nothing and closes two
+    doors at once. `xml.etree.ElementTree` does not resolve external entities
+    (XXE was already blocked) but it *does* expand internal ones, with no
+    limit that can be configured: ten nested entities of ten turn a 400-byte
+    upload into a gigabyte of memory. There is no knob for that, so the DTD
+    has to go.
+
+    This matters beyond the upload endpoint. The same parser reads the XML
+    that arrives from IBKR over the network (§3.6), which is a host we do not
+    control, reached through DNS that has misbehaved before — see the
+    two-hostname section of docs/deployment.md.
+
+    Implemented on expat rather than by searching the text, because a
+    `<!DOCTYPE` inside a comment is legal and must not be rejected. Parsing
+    aborts at the root element, so the cost is the prolog and not the file:
+    under a millisecond on a multi-megabyte statement.
+    """
+    parser = expat.ParserCreate()
+
+    def on_doctype(name, sysid, pubid, has_internal_subset):
+        raise FlexParseError(
+            f"Flex XML declares a DTD (<!DOCTYPE {name}>), which a statement never does. "
+            "Refusing to parse it: entity expansion is a denial-of-service vector."
+        )
+
+    def on_root(name, attrs):
+        raise _ReachedRoot
+
+    parser.StartDoctypeDeclHandler = on_doctype
+    parser.StartElementHandler = on_root
+    try:
+        parser.Parse(text, True)
+    except _ReachedRoot:
+        pass
+    except expat.ExpatError:
+        # Malformed. Say nothing here and let ElementTree below produce the
+        # error message, which names the line and column.
+        pass
+
+
 def parse_flex(text: str) -> ParseResult:
+    _reject_doctype(text)
     try:
         root = ET.fromstring(text)
     except ET.ParseError as exc:
