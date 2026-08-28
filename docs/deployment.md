@@ -564,5 +564,21 @@ or gateway page. The error quotes the first 200 characters of what arrived
 (token redacted) so the page identifies itself. Both are transient in the
 ordinary case; a `<html>` body that persists for hours is IBKR-side.
 
+**"Flex XML declares a DTD ... refusing to parse it"** — the importer
+rejects any XML carrying a `<!DOCTYPE`, on upload and on the sync path
+alike. A Flex statement never has one, so in practice this means the file
+is not a Flex statement, or something rewrote it in transit.
+
+The reason it is refused rather than parsed: Python's XML parser expands
+internal entities with no limit that can be configured, so ten nested
+entities of ten turn a 400-byte document into a gigabyte of memory. External
+entities were never resolved (no XXE), but expansion alone is enough to stop
+the process. Rejecting the DTD closes both, and costs nothing a real
+statement needed.
+
+**An upload returns 400 "Not UTF-8 text"** — the file is binary or in another
+encoding. Flex XML and `.tlg` are both UTF-8. Previously this surfaced as a
+500; it is a bad file, so it is reported as one.
+
 **Benchmark line is stale** — a price fetch failure is non-fatal by design
 (§7.5). The last cached bar stays, marked stale. It will retry next run.
