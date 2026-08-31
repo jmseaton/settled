@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, onUnauthorized, type AuthStatus } from './api'
 import { LoginPage } from './LoginPage'
+import { Logo } from './Logo'
 import { AssignmentBanner } from './AssignmentBanner'
 import { SyncBanner } from './SyncBanner'
 import { CalendarPage } from './pages/CalendarPage'
@@ -102,7 +103,10 @@ export default function App() {
     <div className="app">
       <nav className="sidebar">
         <div className="brand">
-          Settled
+          <span className="brand-name">
+            <Logo size={26} />
+            Settled
+          </span>
           <small>Trade performance tracker</small>
         </div>
         <div className="nav">
