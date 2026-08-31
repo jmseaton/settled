@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type AuthStatus } from './api'
+import { Logo } from './Logo'
 
 /**
  * §1.3a — the only screen a signed-out browser can reach.
@@ -41,7 +42,10 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (status: AuthStatus) => 
     <div className="login-shell">
       <form className="login-card" onSubmit={submit}>
         <div className="brand">
-          Settled
+          <span className="brand-name">
+            <Logo size={30} />
+            Settled
+          </span>
           <small>Trade performance tracker</small>
         </div>
 
