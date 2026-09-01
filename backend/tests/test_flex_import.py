@@ -147,6 +147,164 @@ def test_26b_tlg_order_id_matches_flex_ib_order_id(db, flex_report):
     assert set(order_ids) == tlg_ids
 
 
+def test_26b2_a_partially_filled_order_keeps_every_fill(db):
+    """A regression: fills 2..n of one order were dropped as duplicates.
+
+    `ibOrderID` is per *order*, so a partially filled order emits several
+    Flex rows carrying it. The .tlg-supersede path keyed off it and treated
+    the later fills as repeats, so a 2-lot vertical was imported as 1 lot —
+    and its 2-lot expiration then closed the one lot on file and re-opened
+    the remainder as a phantom position. Dedupe is per fill (transactionID);
+    only a .tlg-sourced prior may collide on ibOrderID.
+    """
+    from tests.synthetic_flex import ACME_PUT_100, ACCOUNT, Fill, Statement
+
+    statement = Statement(
+        from_date=dt.date(2031, 8, 21),
+        to_date=dt.date(2031, 8, 21),
+        fills=[
+            Fill(
+                ACME_PUT_100,
+                quantity=-1,
+                price=3.0,
+                when=dt.datetime(2031, 8, 21, 10, 0, 1),
+                transaction_id="fill-one",
+                order_id="order-42",
+            ),
+            Fill(
+                ACME_PUT_100,
+                quantity=-1,
+                price=3.0,
+                when=dt.datetime(2031, 8, 21, 10, 0, 3),
+                transaction_id="fill-two",
+                order_id="order-42",
+            ),
+        ],
+    )
+    report = import_file(db, "partial-fill.xml", statement.as_bytes())
+
+    assert report.rows_inserted == 2, "both fills of the order must survive"
+    assert report.rows_duplicate == 0
+    rows = db.query(Execution).filter(Execution.account_id == ACCOUNT).all()
+    assert {e.transaction_id for e in rows} == {"fill-one", "fill-two"}
+    assert {e.ib_order_id for e in rows} == {"order-42"}, "one order, two fills"
+    assert sum(float(e.quantity) for e in rows) == -2.0
+
+
+def test_26b3_a_partially_filled_order_is_still_idempotent(db):
+    """The per-fill key still has to reject a genuine re-import."""
+    from tests.synthetic_flex import ACME_PUT_100, ACCOUNT, Fill, Statement
+
+    statement = Statement(
+        from_date=dt.date(2031, 8, 21),
+        to_date=dt.date(2031, 8, 21),
+        fills=[
+            Fill(
+                ACME_PUT_100,
+                quantity=-1,
+                price=3.0,
+                when=dt.datetime(2031, 8, 21, 10, 0, 1),
+                transaction_id="fill-one",
+                order_id="order-42",
+            ),
+            Fill(
+                ACME_PUT_100,
+                quantity=-1,
+                price=3.0,
+                when=dt.datetime(2031, 8, 21, 10, 0, 3),
+                transaction_id="fill-two",
+                order_id="order-42",
+            ),
+        ],
+    )
+    import_file(db, "partial-fill.xml", statement.as_bytes())
+    again = import_file(db, "partial-fill.xml", statement.as_bytes())
+
+    assert again.rows_inserted == 0
+    assert again.rows_duplicate == 2
+    assert db.query(Execution).filter(Execution.account_id == ACCOUNT).count() == 2
+
+
+def test_26b4_a_failed_reconciliation_records_why(db):
+    """A PARTIAL import has to say what was wrong, not just that it was.
+
+    `warnings` is a plain JSON column, so the list handed to ImportFile(...)
+    is not mutation-tracked. Everything appended after the record was built —
+    every reconciliation and closed-lot issue — was silently dropped, and the
+    import went PARTIAL with only its parse-time warnings on file.
+    """
+    from tests.synthetic_flex import ACME_PUT_100, ACCOUNT, Fill, OpenPositionRow, Statement
+    from app.models import ImportFile
+    from app.models.enums import ImportStatus
+
+    # One fill on file, but the broker says the position is twice that: the
+    # reconciliation must fail, and must leave its reason behind.
+    statement = Statement(
+        from_date=dt.date(2031, 8, 21),
+        to_date=dt.date(2031, 8, 21),
+        fills=[
+            Fill(
+                ACME_PUT_100,
+                quantity=-1,
+                price=3.0,
+                when=dt.datetime(2031, 8, 21, 10, 0, 1),
+                transaction_id="fill-one",
+                order_id="order-42",
+            )
+        ],
+        positions=[OpenPositionRow(ACME_PUT_100, quantity=-2, cost_basis_price=3.0, mark_price=3.0)],
+    )
+    report = import_file(db, "mismatch.xml", statement.as_bytes())
+
+    assert report.status == ImportStatus.PARTIAL.value
+    record = db.get(ImportFile, report.import_file_id)
+    assert any("reconciliation" in w for w in record.warnings), (
+        f"the reason a PARTIAL import failed must be persisted, got {record.warnings}"
+    )
+
+
+def test_26b5_a_position_reported_as_several_broker_lots_reconciles(db):
+    """The broker reports a position lot by lot, and two fills make two lots.
+
+    Keying the snapshot rows by instrument kept only the last one, so a
+    correct 2-lot position was compared against a single -1 lot and reported
+    as a quantity mismatch — an error raised on data that was right.
+    """
+    from tests.synthetic_flex import ACME_PUT_100, Fill, OpenPositionRow, Statement
+
+    statement = Statement(
+        from_date=dt.date(2031, 8, 21),
+        to_date=dt.date(2031, 8, 21),
+        fills=[
+            Fill(
+                ACME_PUT_100,
+                quantity=-1,
+                price=3.0,
+                when=dt.datetime(2031, 8, 21, 10, 0, 1),
+                transaction_id="fill-one",
+                order_id="order-42",
+            ),
+            Fill(
+                ACME_PUT_100,
+                quantity=-1,
+                price=3.0,
+                when=dt.datetime(2031, 8, 21, 10, 0, 3),
+                transaction_id="fill-two",
+                order_id="order-42",
+            ),
+        ],
+        # Two lots of -1, exactly as IB reports a two-fill position.
+        positions=[
+            OpenPositionRow(ACME_PUT_100, quantity=-1, cost_basis_price=-3.0, mark_price=-3.0),
+            OpenPositionRow(ACME_PUT_100, quantity=-1, cost_basis_price=-3.0, mark_price=-3.0),
+        ],
+    )
+    report = import_file(db, "two-lots.xml", statement.as_bytes())
+
+    assert report.reconciliation_passed, report.reconciliation_issues
+    assert not any("Quantity mismatch" in i for i in report.reconciliation_issues)
+
+
 def test_26c_reimporting_flex_is_idempotent(db, flex_report):
     """§16.1 test 25 — a 30-day trailing resync produces 0 duplicates."""
     before = db.query(Execution).count()

@@ -182,7 +182,10 @@ def import_file(
         period_end=parsed.period_end or (date_range[1] if date_range else None),
         row_count=len(parsed.executions) + len(parsed.positions),
         status=ImportStatus.SUCCESS,
-        warnings=warnings,
+        # A copy: `warnings` keeps being appended to below, and sharing the
+        # object with the ORM attribute is what silently swallowed those
+        # later entries. See the assignment further down.
+        warnings=list(warnings),
         stored_path=stored_path,
     )
     db.add(record)
@@ -257,7 +260,15 @@ def import_file(
         for issue in lot_check.issues:
             warnings.append(f"[closed_lot:{issue.severity}] {issue.message}")
 
-    record.warnings = warnings
+    # A fresh list, and the constructor above took one too. The column is a
+    # plain JSON that does not track in-place mutation, so when the record
+    # shared this very object the ORM's committed state was mutated right
+    # along with it: by the time of this assignment the two compared equal,
+    # no UPDATE was emitted, and everything appended after the INSERT was
+    # lost — the reconciliation and closed-lot issues, and the supersede
+    # notes from _upsert_executions. That is how an import could go PARTIAL
+    # without ever recording what was wrong with it.
+    record.warnings = list(warnings)
     if not recon.passed or (lot_check is not None and not lot_check.passed):
         record.status = ImportStatus.PARTIAL
     db.commit()
@@ -302,9 +313,18 @@ def _upsert_executions(db, parsed, record, account_id, out_of_window, warnings) 
         # ibOrderID (§3.2). On collision, prefer the Flex rows and mark the
         # .tlg row superseded rather than inserting both — an order that was
         # partially filled produces several Flex rows under one ibOrderID.
+        #
+        # Only a *.tlg*-sourced prior can collide this way, which is what
+        # `not prior.transaction_id` identifies. A prior that carries a
+        # transactionID came from Flex, and a second Flex row under the same
+        # ibOrderID is the next fill of a partially filled order, not a
+        # duplicate — genuine repeats were already rejected by `seen_keys`,
+        # which is keyed per fill. Treating those as duplicates silently
+        # dropped every fill after the first, leaving the position short and
+        # its later close stranded as a phantom opening trade.
         prior = by_order_id.get(pe.broker_trade_id)
-        if prior is not None:
-            if pe.transaction_id and not prior.transaction_id:
+        if prior is not None and not prior.transaction_id:
+            if pe.transaction_id:
                 db.delete(prior)
                 by_order_id.pop(pe.broker_trade_id, None)
                 seen_keys.discard(prior.broker_trade_id)
