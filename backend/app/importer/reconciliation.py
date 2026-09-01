@@ -26,6 +26,36 @@ _OPENING_ACTIONS = {Action.BUYTOOPEN, Action.SELLTOOPEN}
 
 
 @dataclass
+class _BrokerPosition:
+    """The broker's own total for one instrument, summed over its LOT rows.
+
+    A position is reported lot by lot, so one instrument can arrive as
+    several `OpenPosition` rows — a partially filled order is the ordinary
+    way to end up with two. Keying them by instrument keeps only the last
+    row and compares the whole computed position against a fraction of it,
+    which reads as a quantity mismatch on data that is in fact correct.
+    """
+
+    quantity: float = 0.0
+    basis_weight: float = 0.0
+    basis_total: float = 0.0
+
+    def add(self, row) -> None:
+        qty = float(row.quantity)
+        self.quantity += qty
+        # Weighted by |quantity|, matching how `compute_open_positions`
+        # averages the basis across its own remaining lots.
+        self.basis_weight += abs(qty)
+        self.basis_total += abs(qty) * float(row.cost_basis_price)
+
+    @property
+    def cost_basis_price(self) -> float:
+        if self.basis_weight == 0.0:
+            return 0.0
+        return self.basis_total / self.basis_weight
+
+
+@dataclass
 class _Lot:
     remaining_qty: float
     unit_price: float
@@ -167,7 +197,9 @@ def reconcile(db: Session, account_id: str, import_file_id: int) -> Reconciliati
     )
 
     issues: list[ReconciliationIssue] = []
-    snapshot_by_instrument = {row.instrument_id: row for row in snapshot_rows}
+    snapshot_by_instrument: dict[int, _BrokerPosition] = {}
+    for row in snapshot_rows:
+        snapshot_by_instrument.setdefault(row.instrument_id, _BrokerPosition()).add(row)
 
     # An orphan that the §5.5 basis resolver has already supplied an opening
     # leg for is no longer an orphan. Reporting it anyway would leave a
@@ -187,25 +219,25 @@ def reconcile(db: Session, account_id: str, import_file_id: int) -> Reconciliati
     for instrument_id, snap in snapshot_by_instrument.items():
         comp = computed.get(instrument_id)
         comp_qty = comp.quantity if comp else 0.0
-        if abs(comp_qty - float(snap.quantity)) > QUANTITY_TOLERANCE:
+        if abs(comp_qty - snap.quantity) > QUANTITY_TOLERANCE:
             issues.append(
                 ReconciliationIssue(
                     "error",
                     instrument_id,
-                    f"Quantity mismatch: computed {comp_qty} vs broker LOT {snap.quantity}",
+                    f"Quantity mismatch: computed {comp_qty:g} vs broker LOT {snap.quantity:g}",
                 )
             )
             continue
 
         if comp and comp.cost_basis_price is not None:
-            diff = abs(comp.cost_basis_price - float(snap.cost_basis_price))
+            diff = abs(comp.cost_basis_price - snap.cost_basis_price)
             if diff > COST_BASIS_TOLERANCE:
                 issues.append(
                     ReconciliationIssue(
                         "warning",
                         instrument_id,
                         f"Cost basis mismatch: computed {comp.cost_basis_price:.6f} vs broker LOT "
-                        f"{float(snap.cost_basis_price):.6f} (diff {diff:.6f})",
+                        f"{snap.cost_basis_price:.6f} (diff {diff:.6f})",
                     )
                 )
 
