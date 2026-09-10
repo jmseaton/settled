@@ -212,7 +212,7 @@ def parse_flex(text: str) -> ParseResult:
         if parsed is None:
             warnings.append(
                 f"Line {line}: conid={conid!r} ({node.get('symbol')!r}) missing from SecuritiesInfo; "
-                "row skipped. Add Financial Instrument Information to the Flex query (§3.9)."
+                "row skipped. Add Financial Instrument Information to the Flex query."
             )
         return parsed
 
@@ -421,7 +421,7 @@ def _parse_transfers(statement: ET.Element, result: ParseResult, resolve) -> Non
         if transfer_price == 0:
             result.warnings.append(
                 f"Line {line}: Transfer {node.get('symbol')!r} reports transferPrice=0; "
-                "using positionAmount/quantity for the transfer mark (§5.5)"
+                "using positionAmount/quantity for the transfer mark"
             )
 
         result.transfers.append(

@@ -256,7 +256,7 @@ def reconcile(db: Session, account_id: str, import_file_id: int) -> Reconciliati
                     "warning",
                     instrument_id,
                     f"Orphan close of {comp.orphan_close_qty:g} with no opening execution in the data. "
-                    "The position was opened before this file's window or transferred in (§5.5). "
+                    "The position was opened before this file's window or transferred in. "
                     "No P&L is attributed; import the earlier period or record a transfer basis.",
                 )
             )

@@ -67,9 +67,8 @@ export function CashPage({ onChanged }: { onChanged?: () => void }) {
     <>
       <h1>Cash</h1>
       <p className="subtitle">
-        Deposits, withdrawals, transfers, dividends, interest and fees (§7.1). External flows are
-        what TWR strips out; dividends and fees are returns, not flows, and are counted
-        separately.
+        Deposits, withdrawals, transfers, dividends, interest and fees. External flows are what
+        TWR strips out; dividends and fees are returns, not flows, and are counted separately.
       </p>
 
       {error && <div className="banner err">{error}</div>}

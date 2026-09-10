@@ -156,7 +156,7 @@ def import_file(
 
     out_of_window = _find_out_of_window_dates([e.trade_date for e in parsed.executions])
     for d in sorted(out_of_window):
-        warnings.append(f"Trade date {d.isoformat()} falls well outside the file's main date range (§16 test 16b)")
+        warnings.append(f"Trade date {d.isoformat()} falls well outside the file's main date range")
 
     trade_dates = [e.trade_date for e in parsed.executions]
     date_range = (min(trade_dates), max(trade_dates)) if trade_dates else None
@@ -168,7 +168,7 @@ def import_file(
     if stored_path is None:
         warnings.append(
             "Could not archive the original payload; a full rebuild from source "
-            "will not be possible for this import (§3.2)."
+            "will not be possible for this import."
         )
 
     record = ImportFile(
@@ -330,7 +330,7 @@ def _upsert_executions(db, parsed, record, account_id, out_of_window, warnings) 
                 seen_keys.discard(prior.broker_trade_id)
                 warnings.append(
                     f"Order {pe.broker_trade_id}: superseded the .tlg-sourced row with the "
-                    "richer Flex execution (§3.2)"
+                    "richer Flex execution"
                 )
             else:
                 duplicate += 1

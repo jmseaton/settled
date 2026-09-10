@@ -235,7 +235,7 @@ def check_closed_lots(
             result.transfer_notes.append(
                 f"Trade {trade.id} ({trade.instrument.broker_symbol.strip()}): computed "
                 f"{float(trade.net_pnl):.2f} under TRANSFER_MARK vs IB's {ib_pnl:.2f} under "
-                "acquisition cost. Expected divergence (§5.5), not an error."
+                "acquisition cost. Expected divergence, not an error."
             )
             continue
 
@@ -281,8 +281,8 @@ def check_closed_lots(
                     f"close against a lot opened {oldest}, before the earliest {trade.instrument.broker_symbol.strip()} "
                     f"execution held ({earliest_held}), so the two are not matching the same fills "
                     f"(computed {computed:.6f} vs IB {ib_pnl:.6f}). Window truncation, not a "
-                    "matching error (§5.5 case a): import an earlier period — widen the Flex "
-                    "query's own period if it rejects date overrides (§3.9) — and re-sync",
+                    "matching error: import an earlier period — widen the Flex query's own "
+                    "period if it rejects date overrides — and re-sync",
                 )
             )
             continue

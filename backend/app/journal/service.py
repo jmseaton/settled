@@ -76,7 +76,7 @@ def tag_trade(db: Session, account_id: str, trade: Trade, tag: Tag) -> TradeTag:
     anchor = anchor_key_for_trade(db, trade)
     if anchor is None:
         raise JournalError(
-            "This trade's opening leg is synthetic (§5.5/§0.3), so it carries no broker "
+            "This trade's opening leg is synthetic, so it carries no broker "
             "identifier to anchor a tag to — the tag would vanish on the next import. Tag "
             "the day or the strategy group instead."
         )
@@ -316,7 +316,7 @@ def _draft_body(chain, event_type: str) -> str:
         "\n"
         "---\n"
         "\n"
-        "**Check the conventions against what actually happened (§14.6.2).** "
+        "**Check the conventions against what actually happened.** "
         "This is the first real test of a design that was complete but unexercised, "
         "and these are the choices worth confirming now rather than trusting:\n"
         "\n"
@@ -333,5 +333,6 @@ def _draft_body(chain, event_type: str) -> str:
         "this app cannot observe, so every figure above came from the broker's own "
         "records.\n"
         "\n"
-        "If any of that reads wrong against the real event, §5.4 is the section to revisit.\n"
+        "If any of that reads wrong against the real event, the assignment conventions "
+        "are what to revisit.\n"
     )

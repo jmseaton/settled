@@ -117,7 +117,7 @@ export function ExpiryWatchPage() {
 
       <div className="footer-note">
         Distance to strike is shown wherever the underlying has a price — the broker's own mark if
-        the underlying is held, otherwise a cached daily close (§4.10). It is a{' '}
+        the underlying is held, otherwise a cached daily close. It is a{' '}
         <strong>forecast</strong>: in-the-money status settles on a 3 p.m. CT price fixing this app
         cannot observe, so a position can read comfortably out of the money here and still
         exercise. Where no price is cached the column is blank rather than guessed; expiry,

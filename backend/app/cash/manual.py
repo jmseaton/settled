@@ -46,7 +46,7 @@ class CsvResult:
             "errors": self.errors,
             "source": CashSource.MANUAL.value,
             "note": (
-                "Rows entered here are marked MANUAL and survive every resync (§7.1)."
+                "Rows entered here are marked MANUAL and survive every resync."
             ),
         }
 

@@ -70,7 +70,7 @@ class ChainReconciliation:
                 "Per-trade comparison against fifoPnlRealized is expected to disagree on an "
                 "assignment chain: IBKR rolls the option premium into the underlying's basis "
                 "(convention b) while this app keeps them separate (convention a). The two "
-                "agree at the chain level, which is what is checked here (§5.4)."
+                "agree at the chain level, which is what is checked here."
             ),
         }
 

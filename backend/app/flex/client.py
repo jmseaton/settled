@@ -74,7 +74,7 @@ DATE_OVERRIDE_REJECTED_HINT = (
     "rarely the problem: a query on a relative period answers 1003 for every "
     "override, however reasonable, and Client Portal offers no period that "
     "accepts one. Confirm with `python -m app.flex.diagnose` — if the same "
-    "query succeeds with no override and fails with one, this is that (§3.9)"
+    "query succeeds with no override and fails with one, this is that"
 )
 
 #: What a GetStatement response is allowed to be. `FlexQueryResponse` is the
@@ -117,7 +117,7 @@ def describe_unexpected_body(body: str, token: str) -> str:
             "the query's CSV/text output rather than XML. The Flex query's Format "
             "setting is delivering text; set it to XML in Client Portal → "
             "Performance & Reports → Flex Queries → edit the query → Format. "
-            "This app parses Flex XML only (§3.9)"
+            "This app parses Flex XML only"
         )
 
     head = stripped[:_EXCERPT_CHARS].lower()

@@ -195,10 +195,10 @@ def build_expiry_watch(db: Session, account_id: str, as_of: dt.date) -> list[Exp
 
         warnings: list[str] = []
         if instrument.exercise_style == ExerciseStyle.UNKNOWN:
-            warnings.append("Exercise style UNKNOWN — verify contract specs before relying on this row (§5.4)")
+            warnings.append("Exercise style UNKNOWN — verify contract specs before relying on this row")
         if pos.quantity < 0:
             warnings.append(
-                "Shown per leg: spread grouping (§6) is not built yet, so this projection does not "
+                "Shown per leg: spread grouping is not built yet, so this projection does not "
                 "account for an offsetting long leg. If this short is part of a vertical, the real "
                 "exposure is capped at the group's max risk."
             )
@@ -226,13 +226,13 @@ def build_expiry_watch(db: Session, account_id: str, as_of: dt.date) -> list[Exp
                 warnings.append(
                     "In the money at the last mark. This is a forecast, not an outcome: ITM is "
                     "settled on a price fixing this app cannot observe, and the broker's "
-                    "records are the only authority (§5.4)."
+                    "records are the only authority."
                 )
 
         if reference_price is None:
             warnings.append(
                 "No price for the underlying, so no distance to strike. Held underlyings are "
-                "marked from the broker statement; others need a cached daily close (§4.10)."
+                "marked from the broker statement; others need a cached daily close."
             )
 
         rows.append(

@@ -237,7 +237,7 @@ def compute_ratios(trades: list[TradeStat], days: list[DayStat], rf_daily: float
         "proxy_note": (
             "Computed from closed-trade daily P&L, not account equity returns — the "
             "Performance page reports the same ratios over the account-return series, "
-            "which is the conventional basis (§8.2)."
+            "which is the conventional basis."
         ),
         # §14.6.3 — the cutoff says whether to draw the number; this says
         # how much of it to believe.
@@ -284,7 +284,7 @@ def compute_return_ratios(
         "note": (
             "Computed from daily account returns — the conventional basis. The Statistics "
             "page reports the same ratios over the closed-trade P&L series, which answers a "
-            "different question; neither is a correction of the other (§8.2)."
+            "different question; neither is a correction of the other."
         ),
         "sharpe_significance": describe_sharpe(None, n_days),
     }

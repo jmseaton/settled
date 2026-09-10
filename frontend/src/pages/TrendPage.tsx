@@ -170,9 +170,9 @@ export function TrendPage({ mode }: { mode: string }) {
     <>
       <h1>Trend</h1>
       <p className="subtitle">
-        Any metric per <strong>trade</strong> rather than per date, with a moving average
-        (§9.4). Answers "is my edge improving over the last {data.window}?" — and it is the
-        view a change in how you trade actually shows up on.
+        Any metric per <strong>trade</strong> rather than per date, with a moving average.
+        Answers "is my edge improving over the last {data.window}?" — and it is the view a
+        change in how you trade actually shows up on.
       </p>
 
       <div className="toolbar">
@@ -228,7 +228,7 @@ export function TrendPage({ mode }: { mode: string }) {
       <h2>Regime markers</h2>
       <div className="panel">
         <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
-          The app deliberately does not detect regime changes — §6.6 calls that
+          The app deliberately does not detect regime changes — automatic detection is
           over-engineering for one user. Write down when you changed how you trade, and it
           becomes a line on this chart. The fixture's own case: MES was verticals through
           2026-07-05 and naked short puts from 2026-07-12, and a single "MES win rate" spans

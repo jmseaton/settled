@@ -147,7 +147,7 @@ def build_trend(
         "axis_note": (
             "Ordered by close, one point per unit — not per calendar day. Spacing reflects "
             "how many decisions were made rather than how much time passed, which is the "
-            "axis a change in behaviour shows up on (§9.4)."
+            "axis a change in behaviour shows up on."
         ),
         "window_note": (
             f"The moving averages need {window} defined values before they start, so the "
@@ -247,6 +247,6 @@ def build_distribution(units: list[ChartUnit], metric: str, bins: int = 15) -> d
             "The overlay is a normal with the same mean and standard deviation, scaled to "
             "counts. It is there to be departed from: a premium-selling distribution has a "
             "left tail a normal badly understates, and the bars sitting outside the curve "
-            "is the finding (§9.3)."
+            "is the finding."
         ),
     }

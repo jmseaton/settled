@@ -5,7 +5,7 @@ import { money, num, pct, signClass } from '../format'
 import { EpochPanel } from './EpochPanel'
 
 const VARIANTS = [
-  { key: 'WITH_FLOWS', label: 'P&L + deposits/withdrawals', hint: '§7.2 — the account equity curve' },
+  { key: 'WITH_FLOWS', label: 'P&L + deposits/withdrawals', hint: 'The account equity curve' },
   { key: 'PNL_ONLY', label: 'P&L only', hint: 'Cumulative realized P&L, no cash flows' },
   { key: 'WITH_INCOME', label: '+ dividends, interest & fees', hint: 'Closer to the real balance' },
 ] as const
@@ -109,8 +109,8 @@ export function PerformancePage() {
     <>
       <h1>Performance</h1>
       <p className="subtitle">
-        Account-level returns measured from the performance epoch (§0.3, §7). Trade statistics
-        live on the Statistics page; this page is about the account, deposits included.
+        Account-level returns measured from the performance epoch. Trade statistics live on the
+        Statistics page; this page is about the account, deposits included.
       </p>
 
       <EpochPanel epoch={epoch} onChange={load} />

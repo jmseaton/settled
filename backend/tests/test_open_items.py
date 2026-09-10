@@ -345,10 +345,10 @@ def test_the_assignment_draft_carries_the_conventions_to_re_read(client_with_fle
     draft = next(n for n in notes if n["draft"])
     body = draft["body_md"]
 
-    assert "§14.6.2" in body
+    assert "Check the conventions against what actually happened" in body
     # The four choices worth confirming against a real event.
     assert "P&L is split, not rolled" in body
     assert "Risk at open is frozen" in body
     assert "Durations are split" in body
     assert "Nothing here was inferred" in body
-    assert "§5.4 is the section to revisit" in body
+    assert "the assignment conventions are what to revisit" in body

@@ -48,7 +48,7 @@ def get_or_create_instrument(
         if not matched:
             warnings.append(
                 f"Exercise style unresolved for FOP {parsed.broker_symbol!r} (root {parsed.root_symbol!r}); "
-                "defaulted to UNKNOWN — verify against CME before it drives a decision (§5.4)"
+                "defaulted to UNKNOWN — verify against CME before it drives a decision"
             )
         tick_spec = FUTURES_OPTION_TICK_SPECS.get(parsed.root_symbol or "")
         if tick_spec:

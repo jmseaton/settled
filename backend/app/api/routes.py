@@ -126,7 +126,7 @@ def trigger_sync(db: Session = Depends(get_db)):
         raise HTTPException(
             400,
             "Flex credentials are not configured. Set SETTLED_FLEX_TOKEN and "
-            "SETTLED_FLEX_QUERY_ID in the environment (see §3.6 of the spec).",
+            "SETTLED_FLEX_QUERY_ID in the environment.",
         )
 
     with FlexClient(settings.flex_token, settings.flex_query_id) as client:
@@ -411,7 +411,7 @@ def read_settings(db: Session = Depends(get_db)):
             "Performance is measured from the tracking start date, not from account "
             "funding — early experimentation would otherwise contaminate every statistic "
             "with no way to un-mix it later. Without a starting value, percentage returns "
-            "are withheld rather than computed against an assumed zero (§0.3)."
+            "are withheld rather than computed against an assumed zero."
         ),
     }
 
@@ -748,7 +748,7 @@ def list_cash_transactions(
         "net_external_flow": sum(float(r.amount) for r in rows if r.is_external_flow),
         "items": [serialize_cash(r) for r in rows],
         "note": (
-            "Deposits positive, withdrawals negative (§7.1). MANUAL rows survive every "
+            "Deposits positive, withdrawals negative. MANUAL rows survive every "
             "resync; FLEX rows are restated from the broker on each import."
         ),
     }
@@ -787,7 +787,7 @@ def update_cash_transaction(transaction_id: int, payload: dict, db: Session = De
         raise HTTPException(
             409,
             "This row came from IBKR and the next sync would overwrite an edit. Add a "
-            "manual adjustment instead — manual rows survive every resync (§7.1).",
+            "manual adjustment instead — manual rows survive every resync.",
         )
 
     try:
@@ -817,7 +817,7 @@ def delete_cash_transaction(transaction_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             409,
             "This row came from IBKR; the next sync would restore it. Enter an offsetting "
-            "manual adjustment instead (§7.1).",
+            "manual adjustment instead.",
         )
     account = row.account_id
     db.delete(row)
@@ -919,7 +919,7 @@ def set_epoch(payload: dict, db: Session = Depends(get_db)):
     body["tracking_start_value_source"] = row.tracking_start_value_source.value
     body["rebuild_note"] = (
         "Trades, daily snapshots and the benchmark shadow portfolio were re-derived from "
-        "raw executions (§0.3)."
+        "raw executions."
         if rebuilt
         else "No executions imported yet, so there was nothing to rebuild."
     )
@@ -954,7 +954,7 @@ def fetch_epoch_value(payload: dict | None = None, db: Session = Depends(get_db)
         raise HTTPException(
             400,
             "Flex credentials are not configured. Set SETTLED_FLEX_TOKEN and "
-            "SETTLED_FLEX_QUERY_ID in the environment (see §3.6 of the spec).",
+            "SETTLED_FLEX_QUERY_ID in the environment.",
         )
 
     stamp = epoch_date.strftime("%Y%m%d")
@@ -974,7 +974,7 @@ def fetch_epoch_value(payload: dict | None = None, db: Session = Depends(get_db)
             f"[{exc.error_class.value}"
             + (f", code {exc.code}" if exc.code else "")
             + f"]: {exc}. A `1003` here is most likely the query refusing the "
-            "date override (§3.9), which this request cannot work without — it "
+            "date override, which this request cannot work without — it "
             "needs one specific past day, and a relative period cannot name "
             "one. The sync survives the same rejection by falling back to the "
             "query's own period, so a working sync does not mean this will "
@@ -987,7 +987,7 @@ def fetch_epoch_value(payload: dict | None = None, db: Session = Depends(get_db)
         raise HTTPException(
             502,
             "IBKR returned no ChangeInNAV.startingValue for that date. Confirm the Flex "
-            "query includes the Change in NAV section (§3.9).",
+            "query includes the Change in NAV section.",
         )
 
     row.tracking_start_value_ibkr = parsed.nav.starting_value
@@ -1136,7 +1136,7 @@ def expiry_watch(
         "disclaimer": (
             "Forecast of a mechanical consequence only. Reports what happens if a position "
             "finishes in the money; emits no probability, signal, or suggested action. "
-            "In-the-money status settles on a price fixing this app cannot observe (§5.4)."
+            "In-the-money status settles on a price fixing this app cannot observe."
         ),
         "items": [
             {
@@ -1221,7 +1221,7 @@ def list_option_events(
         "disclaimer": (
             "What the broker reported, never what this app calculated should have happened. "
             "In-the-money status settles on a price fixing the app cannot observe, so the "
-            "broker's records are the only authority (§5.4)."
+            "broker's records are the only authority."
         ),
     }
 
@@ -1338,7 +1338,7 @@ def create_note(payload: dict, account_id: str | None = None, db: Session = Depe
             raise HTTPException(
                 400,
                 "This trade's opening leg is synthetic, so a note on it would be lost on the "
-                "next import. Note the day or the strategy group instead (§5.5).",
+                "next import. Note the day or the strategy group instead.",
             )
 
     note = write_note(db, account, scope, scope_ref, payload.get("body_md") or "", anchor_key=anchor)
@@ -1502,7 +1502,7 @@ def bulk_trade_operation(
                         {
                             "trade_id": trade.id,
                             "reason": "Synthetic opening leg — a note here would not survive "
-                            "the next import (§5.5).",
+                            "the next import.",
                         }
                     )
                     continue
@@ -1562,7 +1562,7 @@ def set_levels(
         "profit_target": (
             float(annotation.profit_target) if annotation.profit_target is not None else None
         ),
-        "note": "Stored against the broker's execution ids, so it survives every rebuild (§11.3).",
+        "note": "Stored against the broker's execution ids, so it survives every rebuild.",
     }
 
 
@@ -1590,7 +1590,7 @@ def create_manual_execution(
         "source": execution.source,
         "note": (
             "Entered by hand and marked MANUAL. It survives every resync and is shown "
-            "distinctly in the executions grid so it is never read as a broker fill (§11.3)."
+            "distinctly in the executions grid so it is never read as a broker fill."
         ),
     }
 
@@ -1603,7 +1603,7 @@ def delete_manual_execution(execution_id: int, db: Session = Depends(get_db)):
     if execution.source != "MANUAL":
         raise HTTPException(
             409,
-            "This row came from the broker. Executions are immutable once imported (§3.2) — "
+            "This row came from the broker. Executions are immutable once imported — "
             "the audit trail is the point.",
         )
     account = execution.account_id
@@ -1641,7 +1641,7 @@ def list_corporate_actions(account_id: str | None = None, db: Session = Depends(
         "note": (
             "Only splits are applied. Everything else is recorded and left alone: a "
             "half-applied spin-off looks like a P&L error weeks later with nothing pointing "
-            "at the cause (§11.3)."
+            "at the cause."
         ),
     }
 
@@ -1667,7 +1667,7 @@ def create_corporate_action(
         "applied": action.applied,
         "note": (
             "Applied as a derivation over the raw executions, which are left exactly as the "
-            "broker sent them. Delete the action to undo it (§3.2, §11.3)."
+            "broker sent them. Delete the action to undo it."
         ),
     }
 
@@ -1753,8 +1753,8 @@ def list_regime_markers(account_id: str | None = None, db: Session = Depends(get
     return {
         "items": [m.as_dict() for m in _regime_markers(db, account)],
         "note": (
-            "§6.6 — the app deliberately does not detect regime changes; automatic "
-            "detection is over-engineering for one user. These are yours to write down, "
+            "The app deliberately does not detect regime changes; automatic detection "
+            "is over-engineering for one user. These are yours to write down, "
             "and they render as a vertical line on every time-series chart."
         ),
     }

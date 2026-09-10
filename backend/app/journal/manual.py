@@ -57,7 +57,7 @@ def set_trade_levels(
     anchor = anchor_key_for_trade(db, trade)
     if anchor is None:
         raise JournalError(
-            "This trade's opening leg is synthetic (§5.5/§0.3), so there is no broker "
+            "This trade's opening leg is synthetic, so there is no broker "
             "identifier to key a stop to — it would be lost on the next import."
         )
 
@@ -105,7 +105,7 @@ def create_manual_fill(db: Session, account_id: str, payload: dict) -> Execution
     if not instrument_id:
         raise ManualEntryError(
             "Pick an existing instrument. Contracts come from the broker's own reference "
-            "data (§3.9); typing one by hand would split the position across two."
+            "data; typing one by hand would split the position across two."
         )
     instrument = db.get(Instrument, int(instrument_id))
     if instrument is None:

@@ -27,7 +27,7 @@ DEFAULT_TIMEOUT = 20.0
 BASIS_NOTE = (
     "Stooq bars are split-adjusted; dividend adjustment is undocumented, so adj_close "
     "mirrors close. Benchmark returns from this source are price-only and understate SPY "
-    "by roughly its dividend yield per year (§7.5)."
+    "by roughly its dividend yield per year."
 )
 
 

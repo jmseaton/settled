@@ -162,7 +162,7 @@ export function ChartsPage({ mode }: { mode: string }) {
     <>
       <h1>Charts</h1>
       <p className="subtitle">
-        Any metric against any dimension (§9.1–9.2) — {axes.dimensions.length} ×{' '}
+        Any metric against any dimension — {axes.dimensions.length} ×{' '}
         {axes.metrics.length} combinations from one component. Click a bar to filter everything
         down to that bucket.
       </p>

@@ -26,7 +26,7 @@ def build_price_source(provider: str | None = None, api_key: str | None = None) 
     if choice == "stooq":
         return StooqSource()
     raise ValueError(
-        f"Unknown price source {choice!r}; expected 'auto', 'tiingo' or 'stooq' (§7.5)"
+        f"Unknown price source {choice!r}; expected 'auto', 'tiingo' or 'stooq'"
     )
 
 

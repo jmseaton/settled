@@ -142,6 +142,6 @@ def describe_sharpe(
             "Standard error from Lo (2002), SE(SR) = sqrt((1 + SR²/2)/n), annualized by "
             "the same √252 as the ratio. Assumes IID returns; real trading returns are "
             "autocorrelated and fat-tailed, both of which widen the true interval — so "
-            "this is a floor on the uncertainty, not a bound (§14.6.3)."
+            "this is a floor on the uncertainty, not a bound."
         ),
     }

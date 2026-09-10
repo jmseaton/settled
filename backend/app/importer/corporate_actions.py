@@ -100,12 +100,12 @@ def replace_corporate_actions(db: Session, parsed, record, account_id: str, warn
             warnings.append(
                 f"Corporate action on {action.occurred_on}: looks like a split but no ratio "
                 f"could be read from {action.description!r}. Historical quantities are "
-                "left unadjusted — enter the ratio manually (§11.3)."
+                "left unadjusted — enter the ratio manually."
             )
         elif not is_split:
             warnings.append(
                 f"Corporate action {action.action_type!r} on {action.occurred_on} is recorded "
-                "but not applied: only splits have an unambiguous adjustment (§11.3)."
+                "but not applied: only splits have an unambiguous adjustment."
             )
 
     db.flush()

@@ -107,8 +107,8 @@ export function JournalPage({ onChanged }: { onChanged?: () => void }) {
     <>
       <h1>Journal</h1>
       <p className="subtitle">
-        Assignments and exercises as the broker reported them (§5.4), plus tags, notes and the
-        corporate actions that adjust historical figures (§11).
+        Assignments and exercises as the broker reported them, plus tags, notes and the
+        corporate actions that adjust historical figures.
       </p>
 
       {error && <div className="banner err">{error}</div>}
@@ -307,7 +307,7 @@ export function JournalPage({ onChanged }: { onChanged?: () => void }) {
         Everything written here is keyed to the broker's own execution identifiers, not to trade
         ids — trades are deleted and re-derived on every import, so a tag or note stored against
         one would silently detach on the next sync. A trade whose opening leg was reconstructed
-        (§5.5) has no such identifier and is refused rather than accepted and lost.
+        has no such identifier and is refused rather than accepted and lost.
       </div>
     </>
   )

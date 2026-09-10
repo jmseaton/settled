@@ -54,9 +54,8 @@ export function CalendarPage() {
     <>
       <h1>Calendar</h1>
       <p className="subtitle">
-        Realized P&amp;L per trading day (§9.3 #3). Keyed on the trading day, not the calendar
-        date, so an evening futures fill sits on the session it belongs to. Click a day for its
-        detail.
+        Realized P&amp;L per trading day. Keyed on the trading day, not the calendar date, so an
+        evening futures fill sits on the session it belongs to. Click a day for its detail.
       </p>
 
       <div className="stat-grid">

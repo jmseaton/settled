@@ -206,7 +206,7 @@ def run_sync(
                 if covered is not None and covered.period_start
                 else ""
             )
-            + f" rather than the {window_days}-day window §3.8 asks for. Widen the "
+            + f" rather than the {window_days}-day window this app asks for. Widen the "
             "query's period in Client Portal if it reaches back less far than that."
         )
 

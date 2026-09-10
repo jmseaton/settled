@@ -116,7 +116,7 @@ def replace_flex_cash_transactions(
     for raw in sorted(unrecognized):
         warnings.append(
             f"Cash transaction type {raw!r} is not mapped; recorded as ADJUSTMENT with the "
-            "raw string preserved (§7.1)"
+            "raw string preserved"
         )
 
     db.flush()
@@ -181,7 +181,7 @@ def sync_transfer_flows(db: Session, account_id: str) -> int:
         row.related_instrument_id = transfer.instrument_id
         row.note = (
             f"{transfer.transfer_type} {transfer.direction} of "
-            f"{float(transfer.quantity):g} valued at the transfer-date mark (§5.5)"
+            f"{float(transfer.quantity):g} valued at the transfer-date mark"
         )
 
     db.flush()

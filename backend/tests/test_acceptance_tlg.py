@@ -159,7 +159,7 @@ def test_08c_orphan_close_reconciles_and_is_surfaced(db, orphan_report):
     orphan_issues = [i for i in orphan_report.reconciliation_issues if "Orphan close" in i]
     assert len(orphan_issues) == 1
     assert orphan_issues[0].startswith("[warning]")
-    assert "§5.5" in orphan_issues[0]
+    assert "transferred in" in orphan_issues[0]
 
 
 def test_08d_orphan_fixture_totals(db, orphan_report):

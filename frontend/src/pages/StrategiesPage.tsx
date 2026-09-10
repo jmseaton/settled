@@ -153,7 +153,7 @@ export function StrategiesPage() {
             actually tied up is reported beside it. Both return figures are shown and never
             averaged: they measure different commitments. Durations are split for the same reason
             — the option leg and the position it became were held over different windows, and one
-            combined figure would describe neither (§5.4).
+            combined figure would describe neither.
           </div>
         </>
       )}

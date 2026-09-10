@@ -288,9 +288,8 @@ export function DashboardPage({ mode }: { mode: string }) {
     <>
       <h1>Dashboard</h1>
       <p className="subtitle">
-        §9.3's default set — <strong>a guess, and the spec says so</strong>. Edit it as you
-        learn which views you actually open; that is what turns the guess into a preference
-        (§14.6).
+        The default set is <strong>an educated guess</strong>. Edit it as you learn which
+        views you actually open; that is what turns the guess into a preference.
       </p>
 
       <div className="toolbar">
@@ -401,10 +400,9 @@ export function DashboardPage({ mode }: { mode: string }) {
       </div>
 
       <div className="footer-note">
-        Every panel above is the same parameterized chart component (§9.2), so the dashboard
-        is a saved selection over ~{axes.dimensions.length * axes.metrics.length} possible
-        views rather than a set of bespoke widgets. Removing one costs nothing and adding one
-        back is two dropdowns.
+        Every panel above is the same parameterized chart component, so the dashboard is a saved
+        selection over ~{axes.dimensions.length * axes.metrics.length} possible views rather than
+        a set of bespoke widgets. Removing one costs nothing and adding one back is two dropdowns.
       </div>
     </>
   )

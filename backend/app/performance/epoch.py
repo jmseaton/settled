@@ -64,12 +64,12 @@ UNSET_NOTE = (
     "No performance epoch is set. Percentage returns, TWR, XIRR and the benchmark "
     "comparison all need a starting date and a starting account value to mean anything, "
     "so they are withheld rather than computed against an assumed zero. Set them in "
-    "Settings — the value can be fetched from IBKR rather than typed (§0.3)."
+    "Settings — the value can be fetched from IBKR rather than typed."
 )
 
 NO_VALUE_NOTE = (
     "A tracking start date is set but no starting account value. Absolute P&L is unaffected; "
-    "every percentage measure is withheld until a value is supplied (§0.3)."
+    "every percentage measure is withheld until a value is supplied."
 )
 
 

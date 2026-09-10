@@ -206,24 +206,24 @@ def compute_returns(
         "unrealized_note": (
             "Open positions are valued at zero — no position snapshot covers this period, so "
             "these returns are realized-only and will read below IBKR's reported TWR by the "
-            "change in unrealized P&L (§12)."
+            "change in unrealized P&L."
             if marked_days == 0
             else (
                 f"Open positions are marked to the broker's own close on {marked_days} of "
-                f"{len(snapshots)} day(s), from Flex Open Positions (§12). Days without a "
+                f"{len(snapshots)} day(s), from Flex Open Positions. Days without a "
                 "snapshot are realized-only rather than carrying a stale mark forward."
             )
         ),
         "twr": total_twr,
         "twr_note": (
             "Time-weighted: strips out the timing and size of your own contributions. "
-            "The measure of trading skill, and the headline figure (§7.3)."
+            "The measure of trading skill, and the headline figure."
         ),
         "xirr": xirr(flows),
         "xirr_note": (
             "Money-weighted: the return on your actual dollars, contribution timing "
             "included. Answers a different question from TWR; the gap between them is "
-            "itself informative (§7.3)."
+            "itself informative."
         ),
         "cagr": cagr_from_twr(total_twr, span_days),
         "cagr_note": (
@@ -234,7 +234,7 @@ def compute_returns(
         "simple_return": simple_return(epoch.start_value, ending_value, net_deposits),
         "simple_return_note": (
             "The naive measure. Easy, and wrong when deposits are large relative to the "
-            "account — which on this account they are (§7.3)."
+            "account — which on this account they are."
         ),
     }
 
@@ -285,7 +285,7 @@ def compute_benchmark(
         reason = (
             f"Benchmark bars cover {priced_days} of {len(values)} days in the period."
             if priced_days
-            else "No benchmark price bars are cached for this period yet (§7.5)."
+            else "No benchmark price bars are cached for this period yet."
         )
     else:
         comparison = compare(values, shadow, [float(s.cash_flow) for s in snapshots])
@@ -301,7 +301,7 @@ def compute_benchmark(
         "method": (
             "Cash-flow matched buy-and-hold: the same money, on the same dates, passively "
             "invested at the adjusted close. Comparing TWR against the index's raw period "
-            "return would be apples-to-oranges — the index has no deposits in it (§7.5)."
+            "return would be apples-to-oranges — the index has no deposits in it."
         ),
         **comparison.as_dict(),
     }

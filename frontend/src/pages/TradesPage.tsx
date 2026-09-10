@@ -348,7 +348,7 @@ export function TradesPage({ mode }: { mode: string }) {
                     onChange={() => toggleSelected(t.id)}
                     title={
                       t.has_synthetic_leg
-                        ? 'Reconstructed opening leg — journal data cannot be anchored to it (§5.5)'
+                        ? 'Reconstructed opening leg — journal data cannot be anchored to it'
                         : 'Select for bulk actions'
                     }
                   />

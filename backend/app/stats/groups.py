@@ -47,7 +47,7 @@ class SegmentedRiskStats:
     refusal_reason: str = (
         "Return on risk is not pooled across strategy types. A naked short put and a "
         "vertical carry risk of different orders of magnitude, so a blended figure would "
-        "be meaningless and would look plausible. Read the segments instead (§6.3)."
+        "be meaningless and would look plausible. Read the segments instead."
     )
 
     def as_dict(self) -> dict:

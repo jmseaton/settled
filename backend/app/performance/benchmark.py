@@ -200,7 +200,7 @@ class BenchmarkComparison:
             "note": (
                 "A retrospective measurement of one account against one index over a short "
                 "window. Ten weeks of out- or under-performance says essentially nothing "
-                "about skill. Not investment advice, and not a signal (§7.5)."
+                "about skill. Not investment advice, and not a signal."
             ),
         }
 

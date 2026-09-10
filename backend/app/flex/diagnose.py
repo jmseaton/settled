@@ -141,7 +141,7 @@ def main() -> int:
         "overrides. No Client Portal setting fixes that — the Period list offers "
         "only relative periods, with no custom date range — so the sync falls back "
         "to A automatically and covers the query's own period instead. Widen that "
-        f"period if it reaches back less than the {WINDOW_DAYS} days §3.8 wants."
+        f"period if it reaches back less than the {WINDOW_DAYS} days the sync wants."
         "\nIf C also works, say so: the sync can send p instead and get its exact "
         f"{WINDOW_DAYS}-day window back."
         "\nIf both A and B fail the same way, the override is not the cause — read "

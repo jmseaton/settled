@@ -78,7 +78,7 @@ def replace_option_events(db: Session, parsed, record, account_id: str, warnings
             warnings.append(
                 f"OptionEAE row for {event.symbol.broker_symbol!r} reports transactionType "
                 f"{event.transaction_type!r}, which is not a recognized event; recorded as "
-                "UNKNOWN rather than guessed (§5.4)."
+                "UNKNOWN rather than guessed."
             )
         row.raw_type = event.transaction_type
         row.quantity = event.quantity
@@ -152,7 +152,7 @@ def link_option_events(db: Session, account_id: str) -> dict:
             event.underlying_execution_id = None
             event.link_note = (
                 "Cash-settled: this event produced a cash adjustment at intrinsic value, not "
-                "a position, so there is nothing to link (§5.4)."
+                "a position, so there is nothing to link."
             )
             continue
 
@@ -161,7 +161,7 @@ def link_option_events(db: Session, account_id: str) -> dict:
             event.underlying_execution_id = None
             event.link_note = (
                 "No underlying execution matches this event yet. The resulting position "
-                "usually appears in the next statement (§5.4); the link is retried on "
+                "usually appears in the next statement; the link is retried on "
                 "every import."
             )
             unlinked += 1
@@ -322,7 +322,7 @@ def assignment_alert(db: Session, account_id: str, link_result: dict | None = No
         "items": [_alert_item(db, e) for e in outstanding],
         "note": (
             "An assignment appears in the statement *after* the option's last trading day, "
-            "so this may be a day old. It stays here until acknowledged (§5.4)."
+            "so this may be a day old. It stays here until acknowledged."
             if outstanding
             else None
         ),

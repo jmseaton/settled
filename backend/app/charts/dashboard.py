@@ -31,7 +31,7 @@ SPECIAL_PANELS = {
     "cumulative_pnl": "Cumulative net P&L",
     "calendar": "Monthly P&L calendar",
     "drawdown": "Underwater drawdown plot",
-    "trend": "Rolling per-trade trend (§9.4)",
+    "trend": "Rolling per-trade trend",
     "distribution": "P&L distribution histogram",
 }
 
@@ -140,11 +140,11 @@ class DashboardLayout:
                 {"key": k, "label": v} for k, v in sorted(SPECIAL_PANELS.items())
             ],
             "note": (
-                "§9.3's default set is an educated guess and the spec says so (§14.6). It is "
-                "a starting point you edit, not a fixed dashboard — add what you keep "
-                "opening, remove what you never do, and the guess stops mattering."
+                "The default set is an educated guess. It is a starting point you edit, "
+                "not a fixed dashboard — add what you keep opening, remove what you never "
+                "do, and the guess stops mattering."
                 if not self.customized
-                else "Your layout. Reset returns to §9.3's default set."
+                else "Your layout. Reset returns to the default set."
             ),
         }
 
