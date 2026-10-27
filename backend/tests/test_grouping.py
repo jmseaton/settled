@@ -165,6 +165,29 @@ def test_58b_overall_group_shape(db, flex):
     assert sum(counts.values()) == 24
 
 
+def test_58c_outright_futures_classify_by_direction(db):
+    """A lone futures position is long or short futures, not CUSTOM. The
+    fixture has none, which is how MES futures reached production as CUSTOM."""
+    from tests.synthetic_flex import MES_FUTURE, Fill, Statement
+
+    statement = Statement(
+        from_date=dt.date(2031, 9, 2),
+        to_date=dt.date(2031, 9, 4),
+        fills=[
+            Fill(MES_FUTURE, 1, 7000.0, dt.datetime(2031, 9, 2, 10, 0), "O", transaction_id="long-open"),
+            Fill(MES_FUTURE, -1, 7010.0, dt.datetime(2031, 9, 2, 14, 0), "C", transaction_id="long-close"),
+            Fill(MES_FUTURE, -1, 7020.0, dt.datetime(2031, 9, 3, 10, 0), "O", transaction_id="short-open"),
+            Fill(MES_FUTURE, 1, 7005.0, dt.datetime(2031, 9, 3, 14, 0), "C", transaction_id="short-close"),
+        ],
+    )
+    import_file(db, "futures.xml", statement.as_bytes())
+
+    groups = sorted(db.query(TradeGroup).all(), key=lambda g: g.opened_at)
+    assert [g.strategy_type for g in groups] == [StrategyType.LONG_FUTURES, StrategyType.SHORT_FUTURES]
+    assert all(g.detection_source == DETECTION_SINGLE for g in groups)
+    assert [g.legs[0].strategy_type for g in groups] == [StrategyType.LONG_FUTURES, StrategyType.SHORT_FUTURES]
+
+
 # ----------------------------------------------------------- tests 59, 60
 def test_59_naked_put_uses_the_cash_secured_risk_formula(db, flex):
     """MES 08AUG31 3061.6 P: max_risk = (3061.6 x 5) - credit, not the spread

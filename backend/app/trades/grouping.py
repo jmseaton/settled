@@ -232,6 +232,8 @@ def classify(members: list[_Candidate]) -> StrategyType:
         instrument = member.trade.instrument
         if instrument.asset_class == AssetClass.STK:
             return StrategyType.LONG_STOCK if member.is_long else StrategyType.SHORT_STOCK
+        if instrument.asset_class == AssetClass.FUT:
+            return StrategyType.LONG_FUTURES if member.is_long else StrategyType.SHORT_FUTURES
         if instrument.asset_class not in (AssetClass.OPT, AssetClass.FOP):
             return StrategyType.CUSTOM
         if member.is_long:

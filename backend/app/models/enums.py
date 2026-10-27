@@ -91,6 +91,8 @@ class StrategyType(str, enum.Enum):
     LONG_SINGLE = "LONG_SINGLE"
     LONG_STOCK = "LONG_STOCK"
     SHORT_STOCK = "SHORT_STOCK"
+    LONG_FUTURES = "LONG_FUTURES"
+    SHORT_FUTURES = "SHORT_FUTURES"
     #: §4.6 / §5.4 — the original spread, the assigned leg, the resulting
     #: underlying position and its disposal, as one analytical unit. Not a
     #: strategy anyone chose; a strategy that happened *to* them, which is

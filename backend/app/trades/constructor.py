@@ -184,8 +184,11 @@ def _finalize_trade(acc: _TradeAccumulator, closed_at, status: TradeStatus) -> N
     # position, the exact per-leg falsehood §6 opens by warning about.
     # Classification belongs to §6 grouping (Phase 4); until then options
     # legs stay UNGROUPED rather than carry a wrong risk label.
+    # Stock and futures carry no such ambiguity: one instrument, one direction.
     if trade.instrument.asset_class == AssetClass.STK:
         trade.strategy_type = StrategyType.LONG_STOCK if trade.side == TradeSide.LONG else StrategyType.SHORT_STOCK
+    elif trade.instrument.asset_class == AssetClass.FUT:
+        trade.strategy_type = StrategyType.LONG_FUTURES if trade.side == TradeSide.LONG else StrategyType.SHORT_FUTURES
     else:
         trade.strategy_type = StrategyType.UNGROUPED
 
